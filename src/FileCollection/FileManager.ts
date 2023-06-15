@@ -13,9 +13,14 @@ class FileManager {
 		this.fileProcessor = new FileProcessor(this.app);
 	}
 
-	onFileSaveAction() {
+	onActiveFileSaveAction() {
+		console.log("onActiveFileSave");
+		this.fileProcessor.processSingleFile().then();
+	}
+
+	onIconCLickAction() {
 		console.log("onFileSaveAction");
-		this.fileProcessor.processFile();
+		this.fileProcessor.processFile().then();
 	}
 
 	onFileDeleteAction(file: TAbstractFile) {

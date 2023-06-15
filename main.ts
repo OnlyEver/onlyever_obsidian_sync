@@ -1,12 +1,12 @@
-import { Plugin } from "obsidian";
+import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { FileManager as Manager } from "./src/FileCollection/FileManager";
 
 interface MyPluginSettings {
-	mySetting: string;
+	apiToken: string;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: "default",
+	apiToken: "",
 };
 
 export default class MyPlugin extends Plugin {
@@ -15,6 +15,17 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+
+		const ribbonIconEl = this.addRibbonIcon(
+			"cloud",
+			"Obsidian-Onlyever-plugin",
+			(evt: MouseEvent) => {
+				new Notice("You are using Obsidian Onlyever plugin");
+				this.manager.onIconCLickAction();
+			}
+		);
+
+		ribbonIconEl.addClass("my-plugin-ribbon-class");
 
 		this.manager = new Manager(this.app);
 
@@ -25,8 +36,10 @@ export default class MyPlugin extends Plugin {
 
 		if (typeof save === "function") {
 			saveCommandDefinition.callback = async () => {
-				this.manager.onFileSaveAction();
+				this.manager.onActiveFileSaveAction();
 				save.apply(this.app);
+				console.log("Api TOKEN");
+				console.log(this.getSettingsValue());
 			};
 		}
 
@@ -53,6 +66,8 @@ export default class MyPlugin extends Plugin {
 				this.manager.onFileRenameAction(renamedFile);
 			})
 		);
+
+		this.addSettingTab(new SampleSettingTab(this.app, this));
 	}
 
 	// onunload() {
@@ -70,49 +85,41 @@ export default class MyPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+
+	getSettingsValue(): string {
+		return this.settings.apiToken;
+	}
 }
 
-// class SampleModal extends Modal {
-// 	constructor(app: App) {
-// 		super(app);
-// 	}
+class SampleSettingTab extends PluginSettingTab {
+	plugin: MyPlugin;
 
-// 	onOpen() {
-// 		const {contentEl} = this;
-// 		contentEl.setText('Woah!');
-// 	}
+	constructor(app: App, plugin: MyPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
 
-// 	onClose() {
-// 		const {contentEl} = this;
-// 		contentEl.empty();
-// 	}
-// }
+	display(): void {
+		const { containerEl } = this;
 
-// class SampleSettingTab extends PluginSettingTab {
-// 	plugin: MyPlugin;
+		containerEl.empty();
+		containerEl.createEl("h2", {
+			text: "Settings for Obsidian-Onlyever-Plugin.",
+		});
 
-// 	constructor(app: App, plugin: MyPlugin) {
-// 		super(app, plugin);
-// 		this.plugin = plugin;
-// 	}
-
-// 	display(): void {
-// 		const {containerEl} = this;
-
-// 		containerEl.empty();
-
-// 		containerEl.createEl('h2', {text: 'Settings for my awesome plugin.'});
-
-// 		new Setting(containerEl)
-// 			.setName('Setting #1')
-// 			.setDesc('It\'s a secret')
-// 			.addText(text => text
-// 				.setPlaceholder('Enter your secret')
-// 				.setValue(this.plugin.settings.mySetting)
-// 				.onChange(async (value) => {
-// 					console.log('Secret: ' + value);
-// 					this.plugin.settings.mySetting = value;
-// 					await this.plugin.saveSettings();
-// 				}));
-// 	}
-// }
+		new Setting(containerEl)
+			.setName("API TOKEN")
+			.setDesc("Enter API Token here")
+			.addText((text) =>
+				text
+					.setPlaceholder("API Key goes here")
+					.setValue(this.plugin.settings.apiToken)
+					.onChange(async (value) => {
+						// I think onchange ma each time token verification garna parla
+						this.plugin.settings.apiToken = value;
+						console.log("verfifying token...?");
+						await this.plugin.saveSettings();
+					})
+			);
+	}
+}
