@@ -2,7 +2,7 @@ import { App, TFile } from "obsidian";
 
 class FileParser {
 	app: App;
-	flagRegex = /^---\nmyFlag: (true)\n---\n+/gm;
+	flagRegex = /^---\nobsidian-sync : (true)\n---\n+/gm;
 
 	constructor(app: App) {
 		this.app = app;

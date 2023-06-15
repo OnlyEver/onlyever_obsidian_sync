@@ -27,7 +27,7 @@ export default class MyPlugin extends Plugin {
 
 		ribbonIconEl.addClass("my-plugin-ribbon-class");
 
-		this.manager = new Manager(this.app);
+		this.manager = new Manager(this.app, this.getSettingsValue());
 
 		const saveCommandDefinition = (this.app as any).commands?.commands?.[
 			"editor:save-file"
@@ -38,8 +38,8 @@ export default class MyPlugin extends Plugin {
 			saveCommandDefinition.callback = async () => {
 				this.manager.onActiveFileSaveAction();
 				save.apply(this.app);
-				console.log("Api TOKEN");
-				console.log(this.getSettingsValue());
+				// console.log("Api TOKEN");
+				// console.log(this.getSettingsValue());
 			};
 		}
 
@@ -117,7 +117,7 @@ class SampleSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						// I think onchange ma each time token verification garna parla
 						this.plugin.settings.apiToken = value;
-						console.log("verfifying token...?");
+						// console.log("verfifying token...?");
 						await this.plugin.saveSettings();
 					})
 			);
