@@ -1,6 +1,6 @@
-import { App, TAbstractFile } from "obsidian";
+import { App } from "obsidian";
 import { FileParser } from "./FileParser";
-import { OnlyEverApi } from "./../Api/onlyEverApi";
+import { OnlyEverApi } from "../Api/onlyEverApi";
 
 class FileProcessor {
 	app: App;
@@ -13,74 +13,36 @@ class FileProcessor {
 		this.onlyEverApi = new OnlyEverApi(apiToken);
 	}
 
-	/*
-	 * Do the actual functionality here.
-	 */
-	async processFile() {
-		const files = this.fileParser.getVaultFiles();
-		const vault = this.app.vault.getName();
-		const processedFile = [];
+	async processFiles() {
+		const files = await this.fileParser.getVaultFilesWithCustomFlag();
+		const processedFiles: object[] = [];
 
 		if (files) {
 			for (const file of files) {
-				const rawContents = await this.fileParser.getRawContentsOfFile(
-					file
-				);
-
-				if (this.fileParser.contentHasCustomTag(rawContents)) {
-					processedFile.push({
-						title: file.name,
-						slug: file.name.replace(" ", "_"),
-						content:
-							this.fileParser.getContentsWithoutCustomTag(
-								rawContents
-							),
-						source_type: "obsidian",
-						description: vault,
-					});
-					// console.log(`${file.name} has custom tag`);
-					// console.log(
-					// 	this.fileParser.getContentsWithoutCustomTag(rawContents)
-					// );
-				}
+				processedFiles.push(await this.fileParser.parseToJson(file));
 			}
 		}
 
-		// removed temporarily
-		this.onlyEverApi.syncFile(processedFile);
+		console.log(processedFiles);
+		// this.onlyEverApi.syncFiles(processedFiles);
 	}
 
 	async processSingleFile() {
 		const file = this.app.workspace.getActiveFile();
-		// const vault = this.app.vault.getName();
-		// let processedFile = [];
+		const processedFiles: object[] = [];
 
 		if (file) {
-			const rawContents = await this.fileParser.getRawContentsOfFile(
-				file
-			);
-
-			if (this.fileParser.getContentsWithoutCustomTag(rawContents)) {
-				// processedFile.push({
-				// 	'title': file.name,
-				// 	'slug': file.name.replace(' ', '_'),
-				// 	'content': this.fileParser.getContentsWithoutCustomTag(rawContents),
-				// 	'source_type': 'obsidian',
-				// 	'description': vault
-				// });
-				// console.log(`${file.name} has custom tag`);
-				// console.log(
-				// 	this.fileParser.getContentsWithoutCustomTag(rawContents)
-				// );
+			if (this.fileParser.fileHasCustomFlag(file)) {
+				processedFiles.push(await this.fileParser.parseToJson(file));
 			}
 		}
 
-		// already implemented but comment out later when update flow is clear else same file is pushed to database multiple times
-		// this.onlyEverApi.syncFile(processedFile);
+		console.log(processedFiles);
+		// this.onlyEverApi.syncFiles(processedFiles);
 	}
 
-	theresAFileDeleted(file: TAbstractFile) {
-		// console.log("do something here", file.name);
+	async getCountOfFilesWithCustomFlag() {
+		return (await this.fileParser.getVaultFilesWithCustomFlag()).length;
 	}
 }
 

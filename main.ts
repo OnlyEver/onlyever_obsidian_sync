@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { FileManager as Manager } from "./src/FileCollection/FileManager";
 
 interface MyPluginSettings {
@@ -15,57 +15,53 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		this.manager = new Manager(this.app, this.getSettingsValue());
 
 		const ribbonIconEl = this.addRibbonIcon(
 			"cloud",
 			"Obsidian-Onlyever-plugin",
-			(evt: MouseEvent) => {
-				new Notice("You are using Obsidian Onlyever plugin");
-				this.manager.onIconCLickAction();
+			() => {
+				this.manager.onIconClickAction();
 			}
 		);
-
 		ribbonIconEl.addClass("my-plugin-ribbon-class");
 
-		this.manager = new Manager(this.app, this.getSettingsValue());
+		// const saveCommandDefinition = this.app.commands?.commands?.[
+		// 	"editor:save-file"
+		// ];
+		//
+		// console.log('apple', saveCommandDefinition);
+		// const save = saveCommandDefinition?.callback;
+		//
+		// if (typeof save === "function") {
+		// 	saveCommandDefinition.callback = async () => {
+		// 		this.manager.onActiveFileSaveAction()
+		// 	};
+		// }
 
-		const saveCommandDefinition = (this.app as any).commands?.commands?.[
-			"editor:save-file"
-		];
-		const save = saveCommandDefinition?.callback;
-
-		if (typeof save === "function") {
-			saveCommandDefinition.callback = async () => {
-				this.manager.onActiveFileSaveAction();
-				save.apply(this.app);
-				// console.log("Api TOKEN");
-				// console.log(this.getSettingsValue());
-			};
-		}
-
-		this.registerEvent(
-			this.app.vault.on("create", (deletedFile) => {
-				this.manager.onFileCreateAction(deletedFile);
-			})
-		);
-
-		this.registerEvent(
-			this.app.vault.on("modify", (modifiedFile) => {
-				this.manager.onFileModifyAction(modifiedFile);
-			})
-		);
-
-		this.registerEvent(
-			this.app.vault.on("delete", (deletedFile) => {
-				this.manager.onFileDeleteAction(deletedFile);
-			})
-		);
-
-		this.registerEvent(
-			this.app.vault.on("rename", (renamedFile) => {
-				this.manager.onFileRenameAction(renamedFile);
-			})
-		);
+		// this.registerEvent(
+		// 	this.app.vault.on("create", (deletedFile) => {
+		// 		this.manager.onFileCreateAction(deletedFile);
+		// 	})
+		// );
+		//
+		// this.registerEvent(
+		// 	this.app.vault.on("modify", (modifiedFile) => {
+		// 		this.manager.onFileModifyAction(modifiedFile);
+		// 	})
+		// );
+		//
+		// this.registerEvent(
+		// 	this.app.vault.on("delete", (deletedFile) => {
+		// 		this.manager.onFileDeleteAction(deletedFile);
+		// 	})
+		// );
+		//
+		// this.registerEvent(
+		// 	this.app.vault.on("rename", (renamedFile) => {
+		// 		this.manager.onFileRenameAction(renamedFile);
+		// 	})
+		// );
 
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 	}
@@ -117,7 +113,6 @@ class SampleSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						// I think onchange ma each time token verification garna parla
 						this.plugin.settings.apiToken = value;
-						// console.log("verfifying token...?");
 						await this.plugin.saveSettings();
 					})
 			);

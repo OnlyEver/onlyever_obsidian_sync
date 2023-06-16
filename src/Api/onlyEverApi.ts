@@ -1,4 +1,5 @@
 import axios from "axios";
+import { Notice } from "obsidian";
 
 class OnlyEverApi {
 	apiToken: string;
@@ -10,9 +11,11 @@ class OnlyEverApi {
 	/**
 	 * Syncs Multiple file with only ever atlas
 	 *
+	 * @param files
 	 *
+	 * @return void
 	 */
-	syncFile(files: object) {
+	syncFiles(files: object[]) {
 		try {
 			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
 
@@ -27,7 +30,7 @@ class OnlyEverApi {
 				console.log(res);
 			});
 		} catch (err) {
-			console.log(err);
+			new Notice(`Failed to sync ${files.length} files`);
 		}
 	}
 }
