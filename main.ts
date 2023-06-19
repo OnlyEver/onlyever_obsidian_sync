@@ -39,29 +39,44 @@ export default class MyPlugin extends Plugin {
 		// 	};
 		// }
 
-		// this.registerEvent(
-		// 	this.app.vault.on("create", (deletedFile) => {
-		// 		this.manager.onFileCreateAction(deletedFile);
-		// 	})
-		// );
-		//
-		// this.registerEvent(
-		// 	this.app.vault.on("modify", (modifiedFile) => {
-		// 		this.manager.onFileModifyAction(modifiedFile);
-		// 	})
-		// );
-		//
-		// this.registerEvent(
-		// 	this.app.vault.on("delete", (deletedFile) => {
-		// 		this.manager.onFileDeleteAction(deletedFile);
-		// 	})
-		// );
-		//
-		// this.registerEvent(
-		// 	this.app.vault.on("rename", (renamedFile) => {
-		// 		this.manager.onFileRenameAction(renamedFile);
-		// 	})
-		// );
+		const saveCommandDefinition = (this.app as any).commands?.commands?.[
+			"editor:save-file"
+		];
+		const save = saveCommandDefinition?.callback;
+
+		if (typeof save === "function") {
+			saveCommandDefinition.callback = async () => {
+				this.manager.onActiveFileSaveAction();
+				save.apply(this.app);
+				// console.log("Api TOKEN");
+				// console.log(this.getSettingsValue());
+			};
+		}
+
+		this.registerEvent(
+			this.app.vault.on("create", (createdFile) => {
+				this.manager.onFileCreateAction(createdFile);
+			})
+		);
+
+		this.registerEvent(
+			this.app.vault.on("modify", (modifiedFile) => {
+				console.log("modify", modifiedFile);
+				this.manager.onFileModifyAction(modifiedFile);
+			})
+		);
+
+		this.registerEvent(
+			this.app.vault.on("delete", (deletedFile) => {
+				this.manager.onFileDeleteAction(deletedFile);
+			})
+		);
+
+		this.registerEvent(
+			this.app.vault.on("rename", (renamedFile) => {
+				this.manager.onFileRenameAction(renamedFile);
+			})
+		);
 
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 	}

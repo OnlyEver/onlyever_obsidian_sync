@@ -22,7 +22,7 @@ class FileManager {
 	}
 
 	onActiveFileSaveAction() {
-		this.fileProcessor.processSingleFile().then();
+		this.fileProcessor.processSingleFile();
 	}
 
 	onFileDeleteAction(file: TAbstractFile) {}
