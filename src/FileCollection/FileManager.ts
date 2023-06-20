@@ -1,5 +1,6 @@
-import { App, Notice, TAbstractFile, TFile } from "obsidian";
+import { App, TFile } from "obsidian";
 import { FileProcessor } from "./FileProcessor";
+import { ObsidianOnlyeverPopupModal } from "../ObsidianOnlyeverPopupModal";
 
 class FileManager {
 	app: App;
@@ -13,25 +14,20 @@ class FileManager {
 	}
 
 	async onIconClickAction() {
-		new Notice("Scanning the vault");
-
-		const count = await this.fileProcessor.getCountOfFilesWithCustomFlag();
-		new Notice(`Found ${count} files with custom flag.`);
-
-		this.fileProcessor.processFiles().then();
+		new ObsidianOnlyeverPopupModal(this.app, this.fileProcessor).open();
 	}
 
 	onActiveFileSaveAction() {
 		this.fileProcessor.processSingleFile();
 	}
 
-	onFileDeleteAction(file: TAbstractFile) {}
-
-	onFileModifyAction(file: TAbstractFile) {}
-
-	onFileRenameAction(file: TAbstractFile) {}
-
-	onFileCreateAction(file: TAbstractFile) {}
+	// onFileDeleteAction(file: TAbstractFile) {}
+	//
+	// onFileModifyAction(file: TAbstractFile) {}
+	//
+	// onFileRenameAction(file: TAbstractFile) {}
+	//
+	// onFileCreateAction(file: TAbstractFile) {}
 }
 
 export { FileManager };

@@ -1,16 +1,17 @@
-import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { Plugin } from "obsidian";
 import { FileManager as Manager } from "./src/FileCollection/FileManager";
+import { ObsidianOnlyeverSettingsTab } from "./src/ObsidianOnlyeverSettingsTab";
 
-interface MyPluginSettings {
+interface ObsidianOnlyeverSettings {
 	apiToken: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
 	apiToken: "",
 };
 
 export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+	settings: ObsidianOnlyeverSettings;
 	manager: Manager;
 
 	async onload() {
@@ -38,20 +39,20 @@ export default class MyPlugin extends Plugin {
 		// 		this.manager.onActiveFileSaveAction()
 		// 	};
 		// }
-
-		const saveCommandDefinition = (this.app as any).commands?.commands?.[
-			"editor:save-file"
-		];
-		const save = saveCommandDefinition?.callback;
-
-		if (typeof save === "function") {
-			saveCommandDefinition.callback = async () => {
-				this.manager.onActiveFileSaveAction();
-				save.apply(this.app);
-				// console.log("Api TOKEN");
-				// console.log(this.getSettingsValue());
-			};
-		}
+		//
+		// const saveCommandDefinition = (this.app as any).commands?.commands?.[
+		// 	"editor:save-file"
+		// ];
+		// const save = saveCommandDefinition?.callback;
+		//
+		// if (typeof save === "function") {
+		// 	saveCommandDefinition.callback = async () => {
+		// 		this.manager.onActiveFileSaveAction();
+		// 		save.apply(this.app);
+		// 		// console.log("Api TOKEN");
+		// 		// console.log(this.getSettingsValue());
+		// 	};
+		// }
 
 		this.registerEvent(
 			this.app.vault.on("create", (createdFile) => {
@@ -78,7 +79,7 @@ export default class MyPlugin extends Plugin {
 			})
 		);
 
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new ObsidianOnlyeverSettingsTab(this.app, this));
 	}
 
 	// onunload() {
@@ -99,37 +100,5 @@ export default class MyPlugin extends Plugin {
 
 	getSettingsValue(): string {
 		return this.settings.apiToken;
-	}
-}
-
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const { containerEl } = this;
-
-		containerEl.empty();
-		containerEl.createEl("h2", {
-			text: "Settings for Obsidian-Onlyever-Plugin.",
-		});
-
-		new Setting(containerEl)
-			.setName("API TOKEN")
-			.setDesc("Enter API Token here")
-			.addText((text) =>
-				text
-					.setPlaceholder("API Key goes here")
-					.setValue(this.plugin.settings.apiToken)
-					.onChange(async (value) => {
-						// I think onchange ma each time token verification garna parla
-						this.plugin.settings.apiToken = value;
-						await this.plugin.saveSettings();
-					})
-			);
 	}
 }

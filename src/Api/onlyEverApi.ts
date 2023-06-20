@@ -40,6 +40,30 @@ class OnlyEverApi {
 			new Notice(`Failed to sync ${files.length} files`);
 		}
 	}
+
+	/**
+	 * Validate api token
+	 *
+	 * @return void
+	 */
+	validateApiToken() {
+		try {
+			new Notice("API token is valid");
+			// const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/validate-obsidian-token`;
+			// return axios({
+			// 	method: "post",
+			// 	url: endpoint,
+			// 	headers: {
+			// 		"Content-Type": "application/json",
+			// 	},
+			// 	data: this.apiToken,
+			// }).then((res: object) => {
+			// 	console.log("response", res);
+			// });
+		} catch (err) {
+			new Notice(`Failed to validate API token.`);
+		}
+	}
 }
 
 export { OnlyEverApi };

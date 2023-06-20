@@ -5,7 +5,8 @@ class FileParser {
 	flagRegexWithId = /^---\nobsidianSync : true\nID : [\w]+\n---\n+/gm; //This is for removing formatter from content.
 	flagRegexIdMatch = /^---\nobsidianSync : true\nID : (.*)\n---\n+/gm; //This is for removing formatter from content.
 	flagRegex = /^---\nobsidianSync : true\n---\n+/gm; //This is for removing formatter from content.
-	customFlag = "obsidianSync"; //This is for filtering.
+	markForSyncFlag = "obsidianSync"; //This is for filtering.
+	syncedAtleastOnceFlag = "ID"; //This is for filtering.
 
 	constructor(app: App) {
 		this.app = app;
@@ -25,19 +26,34 @@ class FileParser {
 	 *
 	 * @returns TFile[]
 	 */
-	async getVaultFilesWithCustomFlag() {
-		const filesWithCustomFlag: TFile[] = [];
+	async getSyncableFiles() {
+		const syncableFiles: TFile[] = [];
 		const files = this.getVaultFiles();
 
 		if (files) {
 			for (const file of files) {
-				if (this.fileHasCustomFlag(file)) {
-					filesWithCustomFlag.push(file);
+				if (this.fileHasCustomFlag(file, this.markForSyncFlag)) {
+					syncableFiles.push(file);
 				}
 			}
 		}
 
-		return filesWithCustomFlag;
+		return syncableFiles;
+	}
+
+	async getSyncedFiles() {
+		const syncedFiles: TFile[] = [];
+		const files = this.getVaultFiles();
+
+		if (files) {
+			for (const file of files) {
+				if (this.fileHasCustomFlag(file, this.syncedAtleastOnceFlag)) {
+					syncedFiles.push(file);
+				}
+			}
+		}
+
+		return syncedFiles;
 	}
 
 	/**
@@ -77,13 +93,24 @@ class FileParser {
 	 * Check if contents has custom flag
 	 *
 	 * @param file: TFile
+	 * @param customFlag : string[]
 	 *
 	 * @returns bool
 	 */
-	fileHasCustomFlag(file: TFile): boolean {
+	fileHasCustomFlag(file: TFile, customFlag: string): boolean {
+		// Review this @momik,
+		// I was trying to make a general function that takes Tfile, N number of flags to only filter files that have those flags
+		// It doesn't work when passing only Tfile, 1 flag because all synced files have obsidianSync:true flag. bruh. so badddd.
+
+		// const hasFlag: boolean[] = [];
+		// for(let i=0; i<customFlags.length; i++){
+		// 	hasFlag[i] = this.app.metadataCache.getFileCache(file)?.frontmatter?.[customFlags[i]] ?? false;
+		// }
+		// return hasFlag.every(Boolean)
+
 		return (
 			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-				this.customFlag
+				customFlag
 			] ?? false
 		);
 	}

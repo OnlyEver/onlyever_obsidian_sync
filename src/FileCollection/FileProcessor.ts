@@ -1,4 +1,4 @@
-import { App } from "obsidian";
+import { App, Notice } from "obsidian";
 import { FileParser } from "./FileParser";
 import { OnlyEverApi } from "../Api/onlyEverApi";
 
@@ -14,7 +14,7 @@ class FileProcessor {
 	}
 
 	async processFiles() {
-		const files = await this.fileParser.getVaultFilesWithCustomFlag();
+		const files = await this.fileParser.getSyncableFiles();
 		const processedFiles: object[] = [];
 
 		if (files) {
@@ -39,7 +39,12 @@ class FileProcessor {
 		const processedFiles: object[] = [];
 
 		if (file) {
-			if (this.fileParser.fileHasCustomFlag(file)) {
+			if (
+				this.fileParser.fileHasCustomFlag(
+					file,
+					this.fileParser.markForSyncFlag
+				)
+			) {
 				processedFiles.push(await this.fileParser.parseToJson(file));
 			}
 
@@ -48,8 +53,57 @@ class FileProcessor {
 		}
 	}
 
+	async getVaultFilesWithCustomFlag() {
+		return await this.fileParser.getSyncableFiles();
+	}
+
 	async getCountOfFilesWithCustomFlag() {
-		return (await this.fileParser.getVaultFilesWithCustomFlag()).length;
+		return (await this.getVaultFilesWithCustomFlag()).length;
+	}
+
+	getSyncStatusOfCurrentFile(): boolean {
+		const file = this.app.workspace.getActiveFile();
+
+		if (file) {
+			return this.fileParser.fileHasCustomFlag(
+				file,
+				this.fileParser.markForSyncFlag
+			);
+		}
+
+		return false;
+	}
+
+	async markActiveFileForSync() {
+		const file = this.app.workspace.getActiveFile();
+
+		if (file) {
+			if (
+				this.fileParser.fileHasCustomFlag(
+					file,
+					this.fileParser.markForSyncFlag
+				)
+			) {
+				new Notice(
+					`Note : ${file.name} has already been marked for sync.`
+				);
+
+				return;
+			}
+
+			await this.app.fileManager.processFrontMatter(
+				file,
+				(frontmatter) => {
+					frontmatter["obsidianSync"] = true;
+				}
+			);
+			new Notice(`Note : ${file.name} has been marked for sync.`);
+
+			return;
+		}
+
+		new Notice("You need to open a note to mark it.");
+		return;
 	}
 }
 
