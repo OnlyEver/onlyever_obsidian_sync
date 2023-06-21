@@ -48,18 +48,28 @@ class OnlyEverApi {
 	 */
 	validateApiToken() {
 		try {
-			new Notice("API token is valid");
-			// const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/validate-obsidian-token`;
-			// return axios({
-			// 	method: "post",
-			// 	url: endpoint,
-			// 	headers: {
-			// 		"Content-Type": "application/json",
-			// 	},
-			// 	data: this.apiToken,
-			// }).then((res: object) => {
-			// 	console.log("response", res);
-			// });
+			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/endpoint/verifyToken?pluginName=&obsidiantoken=${this.apiToken}`;
+			console.log(endpoint);
+
+			return axios({
+				method: "post",
+				url: endpoint,
+				headers: {
+					"Content-Type": "application/json",
+				},
+				data: {
+					pluginName: "obsidian",
+					token: `${this.apiToken}`,
+				},
+			}).then((res: object) => {
+				if (res?.data?.success) {
+					new Notice("Valid API Token");
+
+					return;
+				}
+
+				new Notice("Invalid API Token");
+			});
 		} catch (err) {
 			new Notice(`Failed to validate API token.`);
 		}

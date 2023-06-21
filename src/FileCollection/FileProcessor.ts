@@ -39,12 +39,7 @@ class FileProcessor {
 		const processedFiles: object[] = [];
 
 		if (file) {
-			if (
-				this.fileParser.fileHasCustomFlag(
-					file,
-					this.fileParser.markForSyncFlag
-				)
-			) {
+			if (this.fileParser.fileHasCustomFlagOnly(file)) {
 				processedFiles.push(await this.fileParser.parseToJson(file));
 			}
 
@@ -65,10 +60,7 @@ class FileProcessor {
 		const file = this.app.workspace.getActiveFile();
 
 		if (file) {
-			return this.fileParser.fileHasCustomFlag(
-				file,
-				this.fileParser.markForSyncFlag
-			);
+			return this.fileParser.fileHasCustomFlagOnly(file);
 		}
 
 		return false;
@@ -78,12 +70,7 @@ class FileProcessor {
 		const file = this.app.workspace.getActiveFile();
 
 		if (file) {
-			if (
-				this.fileParser.fileHasCustomFlag(
-					file,
-					this.fileParser.markForSyncFlag
-				)
-			) {
+			if (this.fileParser.fileHasCustomFlagOnly(file)) {
 				new Notice(
 					`Note : ${file.name} has already been marked for sync.`
 				);

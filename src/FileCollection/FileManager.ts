@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, TAbstractFile, TFile } from "obsidian";
 import { FileProcessor } from "./FileProcessor";
 import { ObsidianOnlyeverPopupModal } from "../ObsidianOnlyeverPopupModal";
 
@@ -18,16 +18,17 @@ class FileManager {
 	}
 
 	onActiveFileSaveAction() {
-		this.fileProcessor.processSingleFile();
+		// Uncomment this to make sure Ctrl+S sync works.
+		// this.fileProcessor.processSingleFile();
 	}
 
-	// onFileDeleteAction(file: TAbstractFile) {}
-	//
-	// onFileModifyAction(file: TAbstractFile) {}
-	//
-	// onFileRenameAction(file: TAbstractFile) {}
-	//
-	// onFileCreateAction(file: TAbstractFile) {}
+	onFileModifyAction(file: TAbstractFile) {
+		console.log(file.name);
+	}
+
+	onFileRenameAction(file: TAbstractFile) {
+		console.log(file.name);
+	}
 }
 
 export { FileManager };

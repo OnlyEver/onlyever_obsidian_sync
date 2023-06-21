@@ -2,11 +2,16 @@ import { App, TFile } from "obsidian";
 
 class FileParser {
 	app: App;
-	flagRegexWithId = /^---\nobsidianSync : true\nID : [\w]+\n---\n+/gm; //This is for removing formatter from content.
-	flagRegexIdMatch = /^---\nobsidianSync : true\nID : (.*)\n---\n+/gm; //This is for removing formatter from content.
-	flagRegex = /^---\nobsidianSync : true\n---\n+/gm; //This is for removing formatter from content.
-	markForSyncFlag = "obsidianSync"; //This is for filtering.
-	syncedAtleastOnceFlag = "ID"; //This is for filtering.
+
+	//This is for removing formatter from content.
+	flagRegexWithId = /^---\nobsidianSync : true\nID : [\w]+\n---\n+/gm;
+	flagRegexIdMatch = /^---\nobsidianSync : true\nID : (.*)\n---\n+/gm;
+	flagRegex = /^---\nobsidianSync : true\n---\n+/gm;
+
+	//This is for filtering.
+	markForSyncFlag = "obsidianSync";
+	syncedAtleastOnceFlag = "ID";
+	deleteFileFlag = "deleted";
 
 	constructor(app: App) {
 		this.app = app;
@@ -32,7 +37,7 @@ class FileParser {
 
 		if (files) {
 			for (const file of files) {
-				if (this.fileHasCustomFlag(file, this.markForSyncFlag)) {
+				if (this.fileHasCustomFlagOnly(file)) {
 					syncableFiles.push(file);
 				}
 			}
@@ -47,7 +52,7 @@ class FileParser {
 
 		if (files) {
 			for (const file of files) {
-				if (this.fileHasCustomFlag(file, this.syncedAtleastOnceFlag)) {
+				if (this.fileHasBeenSynced(file)) {
 					syncedFiles.push(file);
 				}
 			}
@@ -93,28 +98,71 @@ class FileParser {
 	 * Check if contents has custom flag
 	 *
 	 * @param file: TFile
-	 * @param customFlag : string[]
+	 * @param customFlags : string[]
 	 *
 	 * @returns bool
 	 */
-	fileHasCustomFlag(file: TFile, customFlag: string): boolean {
-		// Review this @momik,
-		// I was trying to make a general function that takes Tfile, N number of flags to only filter files that have those flags
-		// It doesn't work when passing only Tfile, 1 flag because all synced files have obsidianSync:true flag. bruh. so badddd.
+	fileHasParamFlags(file: TFile, ...customFlags: string[]): boolean {
+		const hasFlag: boolean[] = [];
 
-		// const hasFlag: boolean[] = [];
-		// for(let i=0; i<customFlags.length; i++){
-		// 	hasFlag[i] = this.app.metadataCache.getFileCache(file)?.frontmatter?.[customFlags[i]] ?? false;
-		// }
-		// return hasFlag.every(Boolean)
+		for (let i = 0; i < customFlags.length; i++) {
+			hasFlag[i] =
+				this.app.metadataCache.getFileCache(file)?.frontmatter?.[
+					customFlags[i]
+				] ?? false;
+		}
 
-		return (
-			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-				customFlag
-			] ?? false
-		);
+		return hasFlag.every(Boolean);
 	}
 
+	fileHasCustomFlagOnly(file: TFile) {
+		if (
+			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
+				this.markForSyncFlag
+			]
+		) {
+			if (
+				!this.app.metadataCache.getFileCache(file)?.frontmatter?.[
+					this.syncedAtleastOnceFlag
+				]
+			) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	fileHasBeenSynced(file: TFile) {
+		if (
+			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
+				this.markForSyncFlag
+			]
+		) {
+			if (
+				this.app.metadataCache.getFileCache(file)?.frontmatter?.[
+					this.syncedAtleastOnceFlag
+				]
+			) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	fileHasBeenDeleted(file: TFile): boolean {
+		return this.app.metadataCache.getFileCache(file)?.frontmatter?.[
+			this.deleteFileFlag
+		];
+	}
+
+	/*
+	 * Parse to source list object format.
+	 *
+	 * @param file TFile
+	 * @return Promise<object>
+	 */
 	async parseToJson(file: TFile): Promise<object> {
 		return {
 			_id: await this.getFileId(file),

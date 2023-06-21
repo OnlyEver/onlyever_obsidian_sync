@@ -26,50 +26,23 @@ export default class MyPlugin extends Plugin {
 			}
 		);
 		ribbonIconEl.addClass("my-plugin-ribbon-class");
+		// uncomment this to make sure that marked files are synced on onsidian open
+		// this.manager.fileProcessor.processFiles();
 
-		// const saveCommandDefinition = this.app.commands?.commands?.[
-		// 	"editor:save-file"
-		// ];
-		//
-		// console.log('apple', saveCommandDefinition);
-		// const save = saveCommandDefinition?.callback;
-		//
-		// if (typeof save === "function") {
-		// 	saveCommandDefinition.callback = async () => {
-		// 		this.manager.onActiveFileSaveAction()
-		// 	};
-		// }
-		//
-		// const saveCommandDefinition = (this.app as any).commands?.commands?.[
-		// 	"editor:save-file"
-		// ];
-		// const save = saveCommandDefinition?.callback;
-		//
-		// if (typeof save === "function") {
-		// 	saveCommandDefinition.callback = async () => {
-		// 		this.manager.onActiveFileSaveAction();
-		// 		save.apply(this.app);
-		// 		// console.log("Api TOKEN");
-		// 		// console.log(this.getSettingsValue());
-		// 	};
-		// }
+		const saveCommandDefinition =
+			this.app.commands?.commands?.["editor:save-file"];
+		const save = saveCommandDefinition?.callback;
 
-		this.registerEvent(
-			this.app.vault.on("create", (createdFile) => {
-				this.manager.onFileCreateAction(createdFile);
-			})
-		);
+		if (typeof save === "function") {
+			saveCommandDefinition.callback = async () => {
+				this.manager.onActiveFileSaveAction();
+			};
+		}
 
 		this.registerEvent(
 			this.app.vault.on("modify", (modifiedFile) => {
 				console.log("modify", modifiedFile);
 				this.manager.onFileModifyAction(modifiedFile);
-			})
-		);
-
-		this.registerEvent(
-			this.app.vault.on("delete", (deletedFile) => {
-				this.manager.onFileDeleteAction(deletedFile);
 			})
 		);
 
