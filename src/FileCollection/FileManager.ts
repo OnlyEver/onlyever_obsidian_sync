@@ -17,9 +17,8 @@ class FileManager {
 		new ObsidianOnlyeverPopupModal(this.app, this.fileProcessor).open();
 	}
 
-	onActiveFileSaveAction() {
-		// Uncomment this to make sure Ctrl+S sync works.
-		// this.fileProcessor.processSingleFile();
+	async onActiveFileSaveAction() {
+		this.fileProcessor.processSingleFile().then();
 	}
 
 	onFileModifyAction(file: TAbstractFile) {

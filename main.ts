@@ -35,7 +35,7 @@ export default class MyPlugin extends Plugin {
 
 		if (typeof save === "function") {
 			saveCommandDefinition.callback = async () => {
-				this.manager.onActiveFileSaveAction();
+				this.manager.onActiveFileSaveAction().then();
 			};
 		}
 

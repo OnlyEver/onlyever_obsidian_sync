@@ -44,7 +44,7 @@ class FileProcessor {
 			}
 
 			const fileId = await this.onlyEverApi.syncFiles(processedFiles);
-			this.fileParser.updateFileId(file, fileId.pop());
+			await this.fileParser.updateFileId(file, fileId.pop());
 		}
 	}
 

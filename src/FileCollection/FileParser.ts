@@ -1,5 +1,11 @@
 import { App, TFile } from "obsidian";
 
+interface ObsidianSourceList {
+	title: string;
+	content: string;
+	isH1: boolean;
+}
+
 class FileParser {
 	app: App;
 
@@ -94,27 +100,6 @@ class FileParser {
 		return id ? id[1] : null;
 	}
 
-	/**
-	 * Check if contents has custom flag
-	 *
-	 * @param file: TFile
-	 * @param customFlags : string[]
-	 *
-	 * @returns bool
-	 */
-	fileHasParamFlags(file: TFile, ...customFlags: string[]): boolean {
-		const hasFlag: boolean[] = [];
-
-		for (let i = 0; i < customFlags.length; i++) {
-			hasFlag[i] =
-				this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-					customFlags[i]
-				] ?? false;
-		}
-
-		return hasFlag.every(Boolean);
-	}
-
 	fileHasCustomFlagOnly(file: TFile) {
 		if (
 			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
@@ -168,7 +153,11 @@ class FileParser {
 			_id: await this.getFileId(file),
 			title: file.basename,
 			slug: file.basename.replace(" ", "-"),
-			content: await this.getContentsOfFileWithoutFlag(file),
+			content: JSON.stringify(
+				this.parseMarkdownHeaders(
+					await this.getContentsOfFileWithoutFlag(file)
+				)
+			),
 			source_type: "obsidian",
 			description: "Obsidian vault",
 			ctime: new Date(file.stat.ctime),
@@ -185,6 +174,50 @@ class FileParser {
 			file,
 			content.replace(this.flagRegex, replacement)
 		);
+	}
+
+	parseMarkdownHeaders(content: string) {
+		const lines = content.split("\n");
+		const result: ObsidianSourceList[] = [];
+		let currentHeader = "";
+		let currentContent = "";
+		let isH1 = false;
+
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			const match = line.match(/^(#+)\s+(.*)$/);
+
+			// console.log(line, match);
+			if (match) {
+				const headerLevel = match[1].length ?? 0;
+				const headerContent = match[2];
+
+				if (currentHeader !== null) {
+					result.push({
+						title: currentHeader?.trim(),
+						content: currentContent.trim(),
+						isH1: isH1,
+					});
+				}
+
+				// console.log('eta aau na bruh')
+				currentHeader = headerContent;
+				currentContent = "";
+				isH1 = headerLevel === 1;
+			} else {
+				currentContent += line + "\n";
+			}
+		}
+
+		if (currentHeader !== null) {
+			result.push({
+				title: currentHeader?.trim(),
+				content: currentContent.trim(),
+				isH1: isH1,
+			});
+		}
+
+		return result;
 	}
 }
 

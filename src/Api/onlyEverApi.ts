@@ -20,7 +20,7 @@ class OnlyEverApi {
 			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
 			console.log(files.length);
 			let fileId;
-
+			console.log(files);
 			if (files.length > 0) {
 				return axios({
 					method: "post",
