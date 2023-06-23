@@ -12,65 +12,81 @@ class FileProcessor {
 		this.fileParser = new FileParser(app);
 		this.onlyEverApi = new OnlyEverApi(apiToken);
 	}
-
+	/*
+	 * Syncs all marked files in vault
+	 */
 	async processFiles() {
-		const files = await this.fileParser.getSyncableFiles();
+		const files = await this.fileParser.getSyncableFiles(false);
 		const processedFiles: object[] = [];
 
-		if (files) {
-			for (const file of files) {
-				processedFiles.push(await this.fileParser.parseToJson(file));
-			}
-
-			const fileId = await this.onlyEverApi.syncFiles(processedFiles);
-			let i = 0;
-
-			while (i < files.length) {
-				console.log("testing", i, fileId[i]);
-				this.fileParser.updateFileId(files[i], fileId[i]);
-
-				i++;
-			}
+		if (files.length == 0) {
+			new Notice("No files in the vault");
+			return false;
 		}
+
+		for (const file of files) {
+			processedFiles.push(await this.fileParser.parseToJson(file));
+		}
+
+		const fileId = await this.onlyEverApi.syncFiles(processedFiles);
+		let i = 0;
+
+		while (i < files.length) {
+			this.fileParser.updateFileId(files[i], fileId[i]);
+
+			i++;
+		}
+
+		return true;
 	}
 
+	/*
+	 * Syncs active marked file in vault
+	 */
 	async processSingleFile() {
 		const file = this.app.workspace.getActiveFile();
 		const processedFiles: object[] = [];
 
-		if (file) {
-			if (this.fileParser.fileHasCustomFlagOnly(file)) {
-				processedFiles.push(await this.fileParser.parseToJson(file));
-			}
+		if (!file) {
+			new Notice("No note is open.");
+			return;
+		}
 
+		if (this.fileParser.fileHasSyncFlag(file)) {
+			processedFiles.push(await this.fileParser.parseToJson(file));
 			const fileId = await this.onlyEverApi.syncFiles(processedFiles);
 			await this.fileParser.updateFileId(file, fileId.pop());
 		}
 	}
 
+	/*
+	 * Returns an array of files what have ONLY the markedForSyncFlag flag
+	 */
 	async getVaultFilesWithCustomFlag() {
-		return await this.fileParser.getSyncableFiles();
+		return await this.fileParser.getSyncableFiles(true);
 	}
 
-	async getCountOfFilesWithCustomFlag() {
-		return (await this.getVaultFilesWithCustomFlag()).length;
-	}
-
-	getSyncStatusOfCurrentFile(): boolean {
-		const file = this.app.workspace.getActiveFile();
+	/*
+	 * Checks if file has been marked for sync.
+	 */
+	activeFileHasSyncFlag(): boolean {
+		const file = this.app.workspace.getActiveFile() ?? false;
 
 		if (file) {
-			return this.fileParser.fileHasCustomFlagOnly(file);
+			return this.fileParser.fileHasSyncFlag(file);
 		}
 
-		return false;
+		return file;
 	}
 
+	/*
+	 * Adds markForSyncFlag to file
+	 */
 	async markActiveFileForSync() {
 		const file = this.app.workspace.getActiveFile();
 
 		if (file) {
-			if (this.fileParser.fileHasCustomFlagOnly(file)) {
+			if (this.fileParser.fileHasSyncFlag(file)) {
 				new Notice(
 					`Note : ${file.name} has already been marked for sync.`
 				);

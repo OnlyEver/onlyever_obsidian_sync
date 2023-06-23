@@ -27,6 +27,7 @@ export class ObsidianOnlyeverPopupModal extends Modal {
 		const listContainer = contentEl.createEl("div", {
 			cls: "d-flex justify-content-around",
 		});
+
 		this.renderLeftSide(
 			await this.fileProcessor.fileParser.getSyncableFiles(),
 			listContainer
@@ -79,7 +80,7 @@ export class ObsidianOnlyeverPopupModal extends Modal {
 	}
 
 	renderButtonContent(button: HTMLElement) {
-		const buttonContent = this.fileProcessor.getSyncStatusOfCurrentFile()
+		const buttonContent = this.fileProcessor.activeFileHasSyncFlag()
 			? "Already marked active note for sync"
 			: "Mark active note for sync";
 		button.setText(buttonContent);

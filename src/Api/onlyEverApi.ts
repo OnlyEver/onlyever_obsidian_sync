@@ -18,9 +18,7 @@ class OnlyEverApi {
 	async syncFiles(files: object[]) {
 		try {
 			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
-			console.log(files.length);
 			let fileId;
-			console.log(files);
 			if (files.length > 0) {
 				return axios({
 					method: "post",
@@ -30,7 +28,7 @@ class OnlyEverApi {
 					},
 					data: files,
 				}).then((res: object) => {
-					console.log("response", res);
+					new Notice(`Synced ${files.length} file(s)`);
 					return res?.data?.data.fileId;
 				});
 			}

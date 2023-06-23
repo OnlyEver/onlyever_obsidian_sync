@@ -10,9 +10,9 @@ class FileParser {
 	app: App;
 
 	//This is for removing formatter from content.
-	flagRegexWithId = /^---\nobsidianSync : true\nID : [\w]+\n---\n+/gm;
-	flagRegexIdMatch = /^---\nobsidianSync : true\nID : (.*)\n---\n+/gm;
-	flagRegex = /^---\nobsidianSync : true\n---\n+/gm;
+	flagRegexWithId = /^---\nobsidianSync: true\nID: [\w]+\n---\n+/gm;
+	flagRegexIdMatch = /^---\nobsidianSync: true\nID: (.*)\n---\n+/gm;
+	flagRegex = /^---\nobsidianSync: true\n---\n+/gm;
 
 	//This is for filtering.
 	markForSyncFlag = "obsidianSync";
@@ -33,17 +33,23 @@ class FileParser {
 	}
 
 	/**
-	 * Returns files with custom tag in the vault.
+	 * Returns files with markForSyncFlag in the vault.
+	 *
+	 * @param strict boolean
 	 *
 	 * @returns TFile[]
 	 */
-	async getSyncableFiles() {
+	async getSyncableFiles(strict = true): Promise<TFile[]> {
 		const syncableFiles: TFile[] = [];
 		const files = this.getVaultFiles();
 
 		if (files) {
 			for (const file of files) {
-				if (this.fileHasCustomFlagOnly(file)) {
+				if (strict && this.fileHasSyncFlagOnly(file)) {
+					syncableFiles.push(file);
+				}
+
+				if (!strict && this.fileHasSyncFlag(file)) {
 					syncableFiles.push(file);
 				}
 			}
@@ -52,13 +58,18 @@ class FileParser {
 		return syncableFiles;
 	}
 
+	/**
+	 * Returns files with syncedAtleastOnceFlag in the vault.
+	 *
+	 * @returns TFile[]
+	 */
 	async getSyncedFiles() {
 		const syncedFiles: TFile[] = [];
 		const files = this.getVaultFiles();
 
 		if (files) {
 			for (const file of files) {
-				if (this.fileHasBeenSynced(file)) {
+				if (this.fileHasIdFlag(file)) {
 					syncedFiles.push(file);
 				}
 			}
@@ -68,7 +79,9 @@ class FileParser {
 	}
 
 	/**
-	 * Returns file contents with custom tag.
+	 * Returns all contents of file
+	 *
+	 * @param file TFile
 	 *
 	 * @returns string
 	 */
@@ -77,16 +90,32 @@ class FileParser {
 	}
 
 	/**
-	 * Returns content without custom flag
+	 * Returns content after removing all flags
+	 *
+	 * @param file TFile
 	 *
 	 * @returns string
 	 */
 	async getContentsOfFileWithoutFlag(file: TFile) {
-		return (await this.getRawContentsOfFile(file))
-			.replace(this.flagRegex, "")
-			.replace(this.flagRegexWithId, "");
+		const rawContents = await this.getRawContentsOfFile(file);
+
+		if (rawContents.match(this.flagRegex)) {
+			return rawContents.replace(this.flagRegex, "");
+		}
+
+		if (rawContents.match(this.flagRegexIdMatch)) {
+			return rawContents.replace(this.flagRegexWithId, "");
+		}
+
+		return rawContents;
 	}
 
+	/**
+	 * Returns file id
+	 * @param file TFile
+	 *
+	 * @returns string
+	 */
 	async getFileId(file: TFile) {
 		const flag = (await this.getRawContentsOfFile(file)).match(
 			this.flagRegexIdMatch
@@ -100,7 +129,28 @@ class FileParser {
 		return id ? id[1] : null;
 	}
 
-	fileHasCustomFlagOnly(file: TFile) {
+	/**
+	 * Checks if file has markForSyncFlag in it or not.
+	 * @param file TFile
+	 *
+	 * @returns boolean
+	 */
+	fileHasSyncFlag(file: TFile): boolean {
+		return (
+			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
+				this.markForSyncFlag
+			] ?? false
+		);
+	}
+
+	/**
+	 * Checks if file has ONLY markForSyncFlag in it or not.
+	 *
+	 * @param file TFile
+	 *
+	 * @returns boolean
+	 */
+	fileHasSyncFlagOnly(file: TFile) {
 		if (
 			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
 				this.markForSyncFlag
@@ -118,7 +168,14 @@ class FileParser {
 		return false;
 	}
 
-	fileHasBeenSynced(file: TFile) {
+	/**
+	 * Checks if file has ID in it or not.
+	 *
+	 * @param file TFile
+	 *
+	 * @returns boolean
+	 */
+	fileHasIdFlag(file: TFile) {
 		if (
 			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
 				this.markForSyncFlag
@@ -136,17 +193,25 @@ class FileParser {
 		return false;
 	}
 
-	fileHasBeenDeleted(file: TFile): boolean {
+	/**
+	 * Checks if file has deleted in it or not.
+	 *
+	 * @param file TFile
+	 *
+	 * @returns boolean
+	 */
+	fileHasDeleteFlag(file: TFile): boolean {
 		return this.app.metadataCache.getFileCache(file)?.frontmatter?.[
 			this.deleteFileFlag
 		];
 	}
 
-	/*
+	/**
 	 * Parse to source list object format.
 	 *
 	 * @param file TFile
-	 * @return Promise<object>
+	 *
+	 * @returns Promise<object>
 	 */
 	async parseToJson(file: TFile): Promise<object> {
 		return {
@@ -165,10 +230,17 @@ class FileParser {
 		};
 	}
 
+	/**
+	 * Updates/Adds file id to synced file
+	 *
+	 * @param file TFile
+	 * @param fileId string
+	 *
+	 * @returns Promise<object>
+	 */
 	async updateFileId(file: TFile, fileId: string) {
-		console.log("updatingfile");
 		const content = await this.app.vault.read(file);
-		const replacement = `---\nobsidianSync : true\nID : ${fileId}\n---\n`;
+		const replacement = `---\nobsidianSync: true\nID: ${fileId}\n---\n`;
 
 		await this.app.vault.modify(
 			file,
@@ -176,6 +248,13 @@ class FileParser {
 		);
 	}
 
+	/**
+	 * Returns array of object after parsing to our format.
+	 *
+	 * @param content string
+	 *
+	 * @returns Promise<object>
+	 */
 	parseMarkdownHeaders(content: string) {
 		const lines = content.split("\n");
 		const result: ObsidianSourceList[] = [];
@@ -187,11 +266,9 @@ class FileParser {
 			const line = lines[i];
 			const match = line.match(/^(#+)\s+(.*)$/);
 
-			// console.log(line, match);
 			if (match) {
 				const headerLevel = match[1].length ?? 0;
 				const headerContent = match[2];
-
 				if (currentHeader !== null) {
 					result.push({
 						title: currentHeader?.trim(),
@@ -200,7 +277,6 @@ class FileParser {
 					});
 				}
 
-				// console.log('eta aau na bruh')
 				currentHeader = headerContent;
 				currentContent = "";
 				isH1 = headerLevel === 1;
