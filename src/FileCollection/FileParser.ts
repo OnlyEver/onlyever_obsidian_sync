@@ -6,6 +6,12 @@ interface ObsidianSourceList {
 	isH1: boolean;
 }
 
+interface LinkedFileInfo {
+	id: string;
+	path: string;
+	originalAlias: string;
+	newAlias: string;
+}
 class FileParser {
 	app: App;
 
@@ -214,14 +220,23 @@ class FileParser {
 	 * @returns Promise<object>
 	 */
 	async parseToJson(file: TFile): Promise<object> {
+		let contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
+		const backLinkReplacements = await this.getLinkFilesDetails(file);
+
+		for (const replacement of backLinkReplacements) {
+			const { originalAlias, newAlias } = replacement;
+			contentsWithoutFlag = contentsWithoutFlag.replace(
+				originalAlias,
+				newAlias
+			);
+		}
+
 		return {
 			_id: await this.getFileId(file),
 			title: file.basename,
 			slug: file.basename.replace(" ", "-"),
 			content: JSON.stringify(
-				this.parseMarkdownHeaders(
-					await this.getContentsOfFileWithoutFlag(file)
-				)
+				this.parseMarkdownHeaders(contentsWithoutFlag)
 			),
 			source_type: "obsidian",
 			description: "Obsidian vault",
@@ -294,6 +309,39 @@ class FileParser {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Returns json array of LinkedFileInfo that can be used to identify linked document
+	 *
+	 * @param file TFile
+	 * @return LinkedFileInfo[]
+	 */
+	async getLinkFilesDetails(file: TFile) {
+		const linkCollection = this.app.metadataCache.getFileCache(file)?.links;
+		const fileInfoArray: LinkedFileInfo[] = [];
+
+		if (linkCollection) {
+			const files = await this.getSyncedFiles();
+
+			for (let i = 0; i < files.length; i++) {
+				const file: TFile = files[i];
+				for (let j = 0; j < linkCollection.length; j++) {
+					const linkItem = linkCollection[j];
+					const filePath = linkItem.link + ".md";
+					if (file.path === filePath) {
+						const fileId = await this.getFileId(file);
+						fileInfoArray.push({
+							id: fileId ?? "",
+							path: filePath,
+							originalAlias: linkItem.original,
+							newAlias: `[[${linkItem.link}|${fileId}]]`,
+						});
+					}
+				}
+			}
+		}
+		return fileInfoArray;
 	}
 }
 

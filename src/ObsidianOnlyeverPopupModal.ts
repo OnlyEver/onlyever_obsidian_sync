@@ -25,7 +25,7 @@ export class ObsidianOnlyeverPopupModal extends Modal {
 		contentEl.createEl("hr");
 
 		const listContainer = contentEl.createEl("div", {
-			cls: "d-flex justify-content-around",
+			cls: "",
 		});
 
 		this.renderLeftSide(
@@ -61,12 +61,19 @@ export class ObsidianOnlyeverPopupModal extends Modal {
 			.setText("Files Marked for sync");
 		const syncableList = leftSide.createEl("ul", { cls: "no-style-list" });
 
+		if (files.length === 0) {
+			syncableList.createEl("li", {
+				text: "0 New files marked for sync.",
+			});
+		}
+
 		for (const file of files) {
 			syncableList.createEl("li", {
 				text: file.name,
 				cls: "text-warning",
 			});
 		}
+		leftSide.createEl("hr");
 	}
 
 	renderRightSide(files: TFile[], listContainer: HTMLDivElement) {
@@ -81,8 +88,8 @@ export class ObsidianOnlyeverPopupModal extends Modal {
 
 	renderButtonContent(button: HTMLElement) {
 		const buttonContent = this.fileProcessor.activeFileHasSyncFlag()
-			? "Already marked active note for sync"
-			: "Mark active note for sync";
+			? "This note is already in the sync list"
+			: "Add this note to sync list";
 		button.setText(buttonContent);
 	}
 }

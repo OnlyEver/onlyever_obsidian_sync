@@ -12,6 +12,7 @@ class FileProcessor {
 		this.fileParser = new FileParser(app);
 		this.onlyEverApi = new OnlyEverApi(apiToken);
 	}
+
 	/*
 	 * Syncs all marked files in vault
 	 */
