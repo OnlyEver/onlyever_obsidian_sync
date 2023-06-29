@@ -16,17 +16,12 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-		this.manager = new Manager(this.app, this.getSettingsValue());
 
-		const ribbonIconEl = this.addRibbonIcon(
-			"cloud",
-			"Obsidian-Onlyever-plugin",
-			() => {
-				this.manager.onIconClickAction();
-			}
-		);
-		ribbonIconEl.addClass("my-plugin-ribbon-class");
-		// uncomment this to make sure that marked files are synced on onsidian open
+		this.manager = new Manager(this.app, this.getSettingsValue());
+		this.loadHotKeys();
+		this.loadRibbon();
+
+		// uncomment this to make sure that marked files are synced on obsidian open
 		// this.manager.fileProcessor.processFiles();
 
 		const saveCommandDefinition =
@@ -41,23 +36,19 @@ export default class MyPlugin extends Plugin {
 
 		this.registerEvent(
 			this.app.vault.on("modify", (modifiedFile) => {
-				console.log("modify", modifiedFile);
-				this.manager.onFileModifyAction(modifiedFile);
+				// console.log("modify", modifiedFile);
+				// this.manager.onFileModifyAction(modifiedFile);
 			})
 		);
 
 		this.registerEvent(
 			this.app.vault.on("rename", (renamedFile) => {
-				this.manager.onFileRenameAction(renamedFile);
+				// this.manager.onFileRenameAction(renamedFile);
 			})
 		);
 
 		this.addSettingTab(new ObsidianOnlyeverSettingsTab(this.app, this));
 	}
-
-	// onunload() {
-
-	// }
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -73,5 +64,43 @@ export default class MyPlugin extends Plugin {
 
 	getSettingsValue(): string {
 		return this.settings.apiToken;
+	}
+
+	private loadHotKeys() {
+		this.app.commands.addCommand({
+			id: "add-obsidian-sync-true-in-frontmatter",
+			name: "[Onlyever]: Add obsidianSync: true in file",
+			callback: () => {
+				this.manager.fileProcessor.markActiveFileForSync();
+			},
+		});
+
+		this.app.commands.addCommand({
+			id: "sync-all-obsidian-sync-true-files",
+			name: "[Onlyever]: Sync all obsidianSync: true files",
+			callback: () => {
+				this.manager.fileProcessor.processFiles();
+			},
+		});
+	}
+
+	private loadRibbon() {
+		const tickIconEl = this.addRibbonIcon(
+			"dice",
+			"Obsidian-Onlyever-plugin",
+			() => {
+				this.manager.fileProcessor.markActiveFileForSync();
+			}
+		);
+		tickIconEl.addClass("my-plugin-ribbon-class");
+
+		const ribbonIconEl = this.addRibbonIcon(
+			"cloud",
+			"Obsidian-Onlyever-plugin",
+			() => {
+				this.manager.fileProcessor.processFiles();
+			}
+		);
+		ribbonIconEl.addClass("my-plugin-ribbon-class");
 	}
 }
