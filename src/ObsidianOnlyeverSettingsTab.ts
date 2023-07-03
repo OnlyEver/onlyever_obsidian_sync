@@ -5,11 +5,15 @@ import MyPlugin from "../main";
 export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 	plugin: MyPlugin;
 	onlyEverApi: OnlyEverApi;
+	onlyEverPermanent: OnlyEverApi;
 
 	constructor(app: App, plugin: MyPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
-		this.onlyEverApi = new OnlyEverApi(this.plugin.settings.apiToken);
+		this.onlyEverApi = new OnlyEverApi(
+			this.plugin.settings.apiToken,
+			this.plugin.settings.permanentToken
+		);
 	}
 
 	display(): void {
@@ -34,7 +38,11 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 			)
 			.addButton((button) => {
 				button.setButtonText("Validate token").onClick(async () => {
-					this.onlyEverApi.validateApiToken();
+					const identifier =
+						await this.onlyEverApi.validateApiToken();
+					this.plugin.settings.permanentToken = identifier;
+					await this.plugin.saveSettings();
+					await this.plugin.loadSettings();
 				});
 			});
 	}

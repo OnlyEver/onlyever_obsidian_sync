@@ -7,10 +7,14 @@ class FileManager {
 	ownFiles: TFile[];
 	fileProcessor: FileProcessor;
 
-	constructor(app: App, apiToken: string) {
+	constructor(app: App, apiToken: string, permanentToken: string) {
 		this.app = app;
 		this.ownFiles = [];
-		this.fileProcessor = new FileProcessor(this.app, apiToken);
+		this.fileProcessor = new FileProcessor(
+			this.app,
+			apiToken,
+			permanentToken
+		);
 	}
 
 	async onIconClickAction() {

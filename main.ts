@@ -4,10 +4,12 @@ import { ObsidianOnlyeverSettingsTab } from "./src/ObsidianOnlyeverSettingsTab";
 
 interface ObsidianOnlyeverSettings {
 	apiToken: string;
+	permanentToken: string;
 }
 
 const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
 	apiToken: "",
+	permanentToken: "",
 };
 
 export default class MyPlugin extends Plugin {
@@ -16,8 +18,12 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		this.manager = new Manager(
+			this.app,
+			this.getSettingsValue(),
+			this.getPermanentToken()
+		);
 
-		this.manager = new Manager(this.app, this.getSettingsValue());
 		this.loadHotKeys();
 		this.loadRibbon();
 
@@ -62,7 +68,7 @@ export default class MyPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	getSettingsValue(): string {
+	getSettingsValue() {
 		return this.settings.apiToken;
 	}
 
@@ -102,5 +108,9 @@ export default class MyPlugin extends Plugin {
 			}
 		);
 		ribbonIconEl.addClass("my-plugin-ribbon-class");
+	}
+
+	getPermanentToken() {
+		return this.settings.permanentToken;
 	}
 }

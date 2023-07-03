@@ -1,11 +1,16 @@
 import axios from "axios";
-import { Notice } from "obsidian";
+import { Notice, App } from "obsidian";
+// const plugin = require('../../main');
 
 class OnlyEverApi {
+	app: App;
 	apiToken: string;
+	permanentToken: string;
 
-	constructor(apiToken: string) {
+	constructor(apiToken: string, permanentToken: string) {
+		this.app = app;
 		this.apiToken = apiToken;
+		this.permanentToken = permanentToken;
 	}
 
 	/**
@@ -42,12 +47,11 @@ class OnlyEverApi {
 	/**
 	 * Validate api token
 	 *
-	 * @return void
+	 * @return ?string
 	 */
-	validateApiToken() {
+	async validateApiToken() {
 		try {
-			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/endpoint/verifyToken?pluginName=&obsidiantoken=${this.apiToken}`;
-			console.log(endpoint);
+			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/endpoint/verifyToken?pluginName=obsidian&token=${this.apiToken}`;
 
 			return axios({
 				method: "post",
@@ -63,12 +67,13 @@ class OnlyEverApi {
 				if (res?.data?.success) {
 					new Notice("Valid API Token");
 
-					return;
+					return res?.data?.identifier;
 				}
 
 				new Notice("Invalid API Token");
 			});
 		} catch (err) {
+			console.log(err.message);
 			new Notice(`Failed to validate API token.`);
 		}
 	}

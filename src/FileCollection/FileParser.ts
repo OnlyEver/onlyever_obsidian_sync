@@ -14,19 +14,21 @@ interface LinkedFileInfo {
 }
 class FileParser {
 	app: App;
+	permanentToken: string;
 
 	//This is for removing formatter from content.
-	flagRegexWithId = /^---\nobsidianSync: true\nID: [\w]+\n---\n+/gm;
-	flagRegexIdMatch = /^---\nobsidianSync: true\nID: (.*)\n---\n+/gm;
-	flagRegex = /^---\nobsidianSync: true\n---\n+/gm;
+	flagRegexWithId = /^---\noe_sync: true\noe_id: [\w]+\n---\n+/gm;
+	flagRegexIdMatch = /^---\noe_sync: true\noe_id: (.*)\n---\n+/gm;
+	flagRegex = /^---\noe_sync: true\n---\n+/gm;
 
 	//This is for filtering.
-	markForSyncFlag = "obsidianSync";
-	syncedAtleastOnceFlag = "ID";
+	markForSyncFlag = "oe_sync";
+	syncedAtleastOnceFlag = "oe_id";
 	deleteFileFlag = "deleted";
 
-	constructor(app: App) {
+	constructor(app: App, permanentToken: string) {
 		this.app = app;
+		this.permanentToken = permanentToken;
 	}
 
 	/**
@@ -175,7 +177,7 @@ class FileParser {
 	}
 
 	/**
-	 * Checks if file has ID in it or not.
+	 * Checks if file has oe_id in it or not.
 	 *
 	 * @param file TFile
 	 *
@@ -232,9 +234,8 @@ class FileParser {
 		}
 
 		return {
-			_id: await this.getFileId(file),
 			title: file.basename,
-			slug: file.basename.replace(" ", "-"),
+			slug: `ob-${this.permanentToken}-${file.stat.ctime}`,
 			content: JSON.stringify(
 				this.parseMarkdownHeaders(contentsWithoutFlag)
 			),
@@ -255,7 +256,7 @@ class FileParser {
 	 */
 	async updateFileId(file: TFile, fileId: string) {
 		const content = await this.app.vault.read(file);
-		const replacement = `---\nobsidianSync: true\nID: ${fileId}\n---\n`;
+		const replacement = `---\noe_sync: true\noe_id: ${fileId}\n---\n`;
 
 		await this.app.vault.modify(
 			file,
@@ -330,12 +331,14 @@ class FileParser {
 					const linkItem = linkCollection[j];
 					const filePath = linkItem.link + ".md";
 					if (file.path === filePath) {
-						const fileId = await this.getFileId(file);
+						// const fileId = await this.getFileId(file);
+						const alias = `ob-${this.permanentToken}-${file.stat.ctime}`;
+
 						fileInfoArray.push({
-							id: fileId ?? "",
+							id: alias,
 							path: filePath,
 							originalAlias: linkItem.original,
-							newAlias: `[[${linkItem.link}|${fileId}]]`,
+							newAlias: `[[${linkItem.link}||${alias}]]`,
 						});
 					}
 				}
