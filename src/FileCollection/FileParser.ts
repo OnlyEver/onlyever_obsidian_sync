@@ -14,7 +14,6 @@ interface LinkedFileInfo {
 }
 class FileParser {
 	app: App;
-	permanentToken: string;
 
 	//This is for removing formatter from content.
 	flagRegexWithId = /^---\noe_sync: true\noe_id: [\w]+\n---\n+/gm;
@@ -26,9 +25,8 @@ class FileParser {
 	syncedAtleastOnceFlag = "oe_id";
 	deleteFileFlag = "deleted";
 
-	constructor(app: App, permanentToken: string) {
+	constructor(app: App) {
 		this.app = app;
-		this.permanentToken = permanentToken;
 	}
 
 	/**
@@ -105,17 +103,12 @@ class FileParser {
 	 * @returns string
 	 */
 	async getContentsOfFileWithoutFlag(file: TFile) {
-		const rawContents = await this.getRawContentsOfFile(file);
+		const text = await this.getRawContentsOfFile(file);
+		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+		const end = frontmatter.position.end.line + 1;
+		const body = text.split("\n").slice(end).join("\n");
 
-		if (rawContents.match(this.flagRegex)) {
-			return rawContents.replace(this.flagRegex, "");
-		}
-
-		if (rawContents.match(this.flagRegexIdMatch)) {
-			return rawContents.replace(this.flagRegexWithId, "");
-		}
-
-		return rawContents;
+		return body;
 	}
 
 	/**
@@ -225,7 +218,10 @@ class FileParser {
 		let contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 		const backLinkReplacements = await this.getLinkFilesDetails(file);
 
+		console.log(backLinkReplacements);
+
 		for (const replacement of backLinkReplacements) {
+			console.log("replacement", replacement);
 			const { originalAlias, newAlias } = replacement;
 			contentsWithoutFlag = contentsWithoutFlag.replace(
 				originalAlias,
@@ -235,7 +231,7 @@ class FileParser {
 
 		return {
 			title: file.basename,
-			slug: `ob-${this.permanentToken}-${file.stat.ctime}`,
+			slug: `ob-${file.stat.ctime}`,
 			content: JSON.stringify(
 				this.parseMarkdownHeaders(contentsWithoutFlag)
 			),
@@ -244,24 +240,6 @@ class FileParser {
 			ctime: new Date(file.stat.ctime),
 			mtime: new Date(file.stat.mtime),
 		};
-	}
-
-	/**
-	 * Updates/Adds file id to synced file
-	 *
-	 * @param file TFile
-	 * @param fileId string
-	 *
-	 * @returns Promise<object>
-	 */
-	async updateFileId(file: TFile, fileId: string) {
-		const content = await this.app.vault.read(file);
-		const replacement = `---\noe_sync: true\noe_id: ${fileId}\n---\n`;
-
-		await this.app.vault.modify(
-			file,
-			content.replace(this.flagRegex, replacement)
-		);
 	}
 
 	/**
@@ -322,29 +300,48 @@ class FileParser {
 		const linkCollection = this.app.metadataCache.getFileCache(file)?.links;
 		const fileInfoArray: LinkedFileInfo[] = [];
 
+		// console.log('linkCollection', linkCollection);
+
 		if (linkCollection) {
 			const files = await this.getSyncedFiles();
 
 			for (let i = 0; i < files.length; i++) {
+				console.log("file");
 				const file: TFile = files[i];
-				for (let j = 0; j < linkCollection.length; j++) {
-					const linkItem = linkCollection[j];
-					const filePath = linkItem.link + ".md";
-					if (file.path === filePath) {
-						// const fileId = await this.getFileId(file);
-						const alias = `ob-${this.permanentToken}-${file.stat.ctime}`;
 
-						fileInfoArray.push({
-							id: alias,
-							path: filePath,
-							originalAlias: linkItem.original,
-							newAlias: `[[${linkItem.link}||${alias}]]`,
-						});
-					}
+				for (let j = 0; j < linkCollection.length; j++) {
+					console.log("link Collection", linkCollection);
+					const linkItem = linkCollection[j];
+					const filePath = linkItem.link;
+					const alias = this.isValidUrl(filePath)
+						? filePath
+						: `ob-${file.stat.ctime}`;
+
+					fileInfoArray.push({
+						id: alias,
+						path: filePath,
+						originalAlias: linkItem.original,
+						newAlias: `[[${linkItem.link}||${alias}]]`,
+					});
 				}
 			}
 		}
 		return fileInfoArray;
+	}
+
+	/**
+	 * Checks if url is valid
+	 *
+	 * @param path
+	 *
+	 * @returns bool
+	 */
+	isValidUrl(path: string) {
+		try {
+			return Boolean(new URL(path));
+		} catch (e) {
+			return false;
+		}
 	}
 }
 

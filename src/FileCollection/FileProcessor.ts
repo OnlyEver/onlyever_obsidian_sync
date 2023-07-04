@@ -7,14 +7,12 @@ class FileProcessor {
 	fileParser: FileParser;
 	onlyEverApi: OnlyEverApi;
 	apiToken: string;
-	permanentToken: string;
 
-	constructor(app: App, apiToken: string, permanentToken: string) {
+	constructor(app: App, apiToken: string) {
 		this.app = app;
 		this.fileParser = new FileParser(app);
 		this.apiToken = apiToken;
-		this.permanentToken = permanentToken;
-		this.onlyEverApi = new OnlyEverApi(apiToken, permanentToken);
+		this.onlyEverApi = new OnlyEverApi(apiToken);
 	}
 
 	/*
@@ -33,14 +31,7 @@ class FileProcessor {
 			processedFiles.push(await this.fileParser.parseToJson(file));
 		}
 
-		// const fileId = await this.onlyEverApi.syncFiles(processedFiles);
-		// let i = 0;
-
-		// while (i < files.length) {
-		// 	this.fileParser.updateFileId(files[i], fileId[i]);
-
-		// 	i++;
-		// }
+		await this.onlyEverApi.syncFiles(processedFiles);
 
 		return true;
 	}
@@ -59,9 +50,7 @@ class FileProcessor {
 
 		if (this.fileParser.fileHasSyncFlag(file)) {
 			processedFiles.push(await this.fileParser.parseToJson(file));
-			// const fileId = await this.onlyEverApi.syncFiles(processedFiles);
-
-			// await this.fileParser.updateFileId(file, fileId.pop());
+			await this.onlyEverApi.syncFiles(processedFiles);
 		}
 	}
 
@@ -104,9 +93,6 @@ class FileProcessor {
 				file,
 				(frontmatter) => {
 					frontmatter["oe_sync"] = true;
-					frontmatter[
-						"oe_id"
-					] = `ob-${this.permanentToken}-${file.stat.ctime}`;
 				}
 			);
 			new Notice(`Note : ${file.name} has been marked for sync.`);

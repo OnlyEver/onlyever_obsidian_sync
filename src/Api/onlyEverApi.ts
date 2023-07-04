@@ -1,16 +1,13 @@
 import axios from "axios";
 import { Notice, App } from "obsidian";
-// const plugin = require('../../main');
 
 class OnlyEverApi {
 	app: App;
 	apiToken: string;
-	permanentToken: string;
 
-	constructor(apiToken: string, permanentToken: string) {
+	constructor(apiToken: string) {
 		this.app = app;
 		this.apiToken = apiToken;
-		this.permanentToken = permanentToken;
 	}
 
 	/**
@@ -66,11 +63,9 @@ class OnlyEverApi {
 			}).then((res: object) => {
 				if (res?.data?.success) {
 					new Notice("Valid API Token");
-
-					return res?.data?.identifier;
+				} else {
+					new Notice("Invalid API Token");
 				}
-
-				new Notice("Invalid API Token");
 			});
 		} catch (err) {
 			console.log(err.message);

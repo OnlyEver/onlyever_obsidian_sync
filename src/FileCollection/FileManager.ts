@@ -6,15 +6,12 @@ class FileManager {
 	app: App;
 	ownFiles: TFile[];
 	fileProcessor: FileProcessor;
+	apiToken: string;
 
-	constructor(app: App, apiToken: string, permanentToken: string) {
+	constructor(app: App, apiToken: string) {
 		this.app = app;
 		this.ownFiles = [];
-		this.fileProcessor = new FileProcessor(
-			this.app,
-			apiToken,
-			permanentToken
-		);
+		this.fileProcessor = new FileProcessor(this.app, apiToken);
 	}
 
 	async onIconClickAction() {
@@ -32,6 +29,8 @@ class FileManager {
 	onFileRenameAction(file: TAbstractFile) {
 		console.log(file.name);
 	}
+
+	setApiToken(token: string) {}
 }
 
 export { FileManager };
