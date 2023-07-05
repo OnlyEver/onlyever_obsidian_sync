@@ -16,13 +16,14 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-		this.manager = new Manager(this.app, this.getSettingsValue());
 
 		this.loadHotKeys();
 		this.loadRibbon();
 
+		this.scanVault();
+
 		// uncomment this to make sure that marked files are synced on obsidian open
-		// this.manager.fileProcessor.processFiles();
+		this.manager.fileProcessor.processFiles();
 
 		const saveCommandDefinition =
 			this.app.commands?.commands?.["editor:save-file"];
@@ -33,19 +34,6 @@ export default class MyPlugin extends Plugin {
 				this.manager.onActiveFileSaveAction().then();
 			};
 		}
-
-		this.registerEvent(
-			this.app.vault.on("modify", (modifiedFile) => {
-				// console.log("modify", modifiedFile);
-				// this.manager.onFileModifyAction(modifiedFile);
-			})
-		);
-
-		this.registerEvent(
-			this.app.vault.on("rename", (renamedFile) => {
-				// this.manager.onFileRenameAction(renamedFile);
-			})
-		);
 
 		this.addSettingTab(new ObsidianOnlyeverSettingsTab(this.app, this));
 	}
@@ -60,6 +48,7 @@ export default class MyPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		this.scanVault();
 	}
 
 	getSettingsValue() {
@@ -67,17 +56,17 @@ export default class MyPlugin extends Plugin {
 	}
 
 	private loadHotKeys() {
-		this.app.commands.addCommand({
+		this.addCommand({
 			id: "add-obsidian-sync-true-in-frontmatter",
-			name: "[Onlyever]: Add obsidianSync: true in file",
+			name: "Mark for Sync",
 			callback: () => {
 				this.manager.fileProcessor.markActiveFileForSync();
 			},
 		});
 
-		this.app.commands.addCommand({
+		this.addCommand({
 			id: "sync-all-obsidian-sync-true-files",
-			name: "[Onlyever]: Sync all obsidianSync: true files",
+			name: "Sync Notes",
 			callback: () => {
 				this.manager.fileProcessor.processFiles();
 			},
@@ -85,22 +74,18 @@ export default class MyPlugin extends Plugin {
 	}
 
 	private loadRibbon() {
-		const tickIconEl = this.addRibbonIcon(
-			"dice",
-			"Obsidian-Onlyever-plugin",
-			() => {
-				this.manager.fileProcessor.markActiveFileForSync();
-			}
-		);
+		const tickIconEl = this.addRibbonIcon("dice", "Mark for Sync", () => {
+			this.manager.fileProcessor.markActiveFileForSync();
+		});
 		tickIconEl.addClass("my-plugin-ribbon-class");
 
-		const ribbonIconEl = this.addRibbonIcon(
-			"cloud",
-			"Obsidian-Onlyever-plugin",
-			() => {
-				this.manager.fileProcessor.processFiles();
-			}
-		);
+		const ribbonIconEl = this.addRibbonIcon("cloud", "Sync Notes", () => {
+			this.manager.fileProcessor.processFiles();
+		});
 		ribbonIconEl.addClass("my-plugin-ribbon-class");
+	}
+
+	private scanVault() {
+		this.manager = new Manager(app, this.getSettingsValue());
 	}
 }

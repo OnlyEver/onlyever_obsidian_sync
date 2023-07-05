@@ -1,6 +1,5 @@
-import { App, TAbstractFile, TFile } from "obsidian";
+import { App, TFile } from "obsidian";
 import { FileProcessor } from "./FileProcessor";
-import { ObsidianOnlyeverPopupModal } from "../ObsidianOnlyeverPopupModal";
 
 class FileManager {
 	app: App;
@@ -14,23 +13,9 @@ class FileManager {
 		this.fileProcessor = new FileProcessor(this.app, apiToken);
 	}
 
-	async onIconClickAction() {
-		new ObsidianOnlyeverPopupModal(this.app, this.fileProcessor).open();
-	}
-
 	async onActiveFileSaveAction() {
 		this.fileProcessor.processSingleFile().then();
 	}
-
-	onFileModifyAction(file: TAbstractFile) {
-		console.log(file.name);
-	}
-
-	onFileRenameAction(file: TAbstractFile) {
-		console.log(file.name);
-	}
-
-	setApiToken(token: string) {}
 }
 
 export { FileManager };

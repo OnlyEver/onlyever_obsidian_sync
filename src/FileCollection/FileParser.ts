@@ -15,16 +15,15 @@ interface LinkedFileInfo {
 class FileParser {
 	app: App;
 
-	//This is for removing formatter from content.
-	flagRegexWithId = /^---\noe_sync: true\noe_id: [\w]+\n---\n+/gm;
-	flagRegexIdMatch = /^---\noe_sync: true\noe_id: (.*)\n---\n+/gm;
-	flagRegex = /^---\noe_sync: true\n---\n+/gm;
-
 	//This is for filtering.
 	markForSyncFlag = "oe_sync";
-	syncedAtleastOnceFlag = "oe_id";
 	deleteFileFlag = "deleted";
 
+	/**
+	 * FileParser constructor
+	 *
+	 * @param app
+	 */
 	constructor(app: App) {
 		this.app = app;
 	}
@@ -41,47 +40,21 @@ class FileParser {
 	/**
 	 * Returns files with markForSyncFlag in the vault.
 	 *
-	 * @param strict boolean
-	 *
 	 * @returns TFile[]
 	 */
-	async getSyncableFiles(strict = true): Promise<TFile[]> {
+	async getSyncableFiles(): Promise<TFile[]> {
 		const syncableFiles: TFile[] = [];
 		const files = this.getVaultFiles();
 
 		if (files) {
 			for (const file of files) {
-				if (strict && this.fileHasSyncFlagOnly(file)) {
-					syncableFiles.push(file);
-				}
-
-				if (!strict && this.fileHasSyncFlag(file)) {
+				if (this.fileHasSyncFlag(file)) {
 					syncableFiles.push(file);
 				}
 			}
 		}
 
 		return syncableFiles;
-	}
-
-	/**
-	 * Returns files with syncedAtleastOnceFlag in the vault.
-	 *
-	 * @returns TFile[]
-	 */
-	async getSyncedFiles() {
-		const syncedFiles: TFile[] = [];
-		const files = this.getVaultFiles();
-
-		if (files) {
-			for (const file of files) {
-				if (this.fileHasIdFlag(file)) {
-					syncedFiles.push(file);
-				}
-			}
-		}
-
-		return syncedFiles;
 	}
 
 	/**
@@ -102,32 +75,13 @@ class FileParser {
 	 *
 	 * @returns string
 	 */
-	async getContentsOfFileWithoutFlag(file: TFile) {
+	async getContentsOfFileWithoutFlag(file: TFile): Promise<string> {
 		const text = await this.getRawContentsOfFile(file);
 		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
 		const end = frontmatter.position.end.line + 1;
 		const body = text.split("\n").slice(end).join("\n");
 
 		return body;
-	}
-
-	/**
-	 * Returns file id
-	 * @param file TFile
-	 *
-	 * @returns string
-	 */
-	async getFileId(file: TFile) {
-		const flag = (await this.getRawContentsOfFile(file)).match(
-			this.flagRegexIdMatch
-		);
-		let id = null;
-
-		if (flag) {
-			id = this.flagRegexIdMatch.exec(flag[0]);
-		}
-
-		return id ? id[1] : null;
 	}
 
 	/**
@@ -140,58 +94,8 @@ class FileParser {
 		return (
 			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
 				this.markForSyncFlag
-			] ?? false
+			] === true ?? false
 		);
-	}
-
-	/**
-	 * Checks if file has ONLY markForSyncFlag in it or not.
-	 *
-	 * @param file TFile
-	 *
-	 * @returns boolean
-	 */
-	fileHasSyncFlagOnly(file: TFile) {
-		if (
-			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-				this.markForSyncFlag
-			]
-		) {
-			if (
-				!this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-					this.syncedAtleastOnceFlag
-				]
-			) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * Checks if file has oe_id in it or not.
-	 *
-	 * @param file TFile
-	 *
-	 * @returns boolean
-	 */
-	fileHasIdFlag(file: TFile) {
-		if (
-			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-				this.markForSyncFlag
-			]
-		) {
-			if (
-				this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-					this.syncedAtleastOnceFlag
-				]
-			) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	/**
@@ -218,10 +122,7 @@ class FileParser {
 		let contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 		const backLinkReplacements = await this.getLinkFilesDetails(file);
 
-		console.log(backLinkReplacements);
-
 		for (const replacement of backLinkReplacements) {
-			console.log("replacement", replacement);
 			const { originalAlias, newAlias } = replacement;
 			contentsWithoutFlag = contentsWithoutFlag.replace(
 				originalAlias,
@@ -237,6 +138,7 @@ class FileParser {
 			),
 			source_type: "obsidian",
 			description: "Obsidian vault",
+			heading: this.parseHeadings(file),
 			ctime: new Date(file.stat.ctime),
 			mtime: new Date(file.stat.mtime),
 		};
@@ -291,6 +193,21 @@ class FileParser {
 	}
 
 	/**
+	 * Returns headings present in a file
+	 *
+	 * @param file
+	 *
+	 * @returns Array
+	 */
+	parseHeadings(file: TFile) {
+		const headings = this.app.metadataCache.getFileCache(file)?.headings;
+
+		return headings?.map((item) => {
+			return item["heading"];
+		});
+	}
+
+	/**
 	 * Returns json array of LinkedFileInfo that can be used to identify linked document
 	 *
 	 * @param file TFile
@@ -300,17 +217,13 @@ class FileParser {
 		const linkCollection = this.app.metadataCache.getFileCache(file)?.links;
 		const fileInfoArray: LinkedFileInfo[] = [];
 
-		// console.log('linkCollection', linkCollection);
-
 		if (linkCollection) {
-			const files = await this.getSyncedFiles();
+			const files = await this.getSyncableFiles();
 
 			for (let i = 0; i < files.length; i++) {
-				console.log("file");
 				const file: TFile = files[i];
 
 				for (let j = 0; j < linkCollection.length; j++) {
-					console.log("link Collection", linkCollection);
 					const linkItem = linkCollection[j];
 					const filePath = linkItem.link;
 					const alias = this.isValidUrl(filePath)
@@ -321,11 +234,12 @@ class FileParser {
 						id: alias,
 						path: filePath,
 						originalAlias: linkItem.original,
-						newAlias: `[[${linkItem.link}||${alias}]]`,
+						newAlias: `[[${linkItem.link}| |${alias}]]`,
 					});
 				}
 			}
 		}
+
 		return fileInfoArray;
 	}
 
@@ -336,7 +250,7 @@ class FileParser {
 	 *
 	 * @returns bool
 	 */
-	isValidUrl(path: string) {
+	isValidUrl(path: string): boolean {
 		try {
 			return Boolean(new URL(path));
 		} catch (e) {

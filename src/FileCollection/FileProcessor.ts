@@ -19,7 +19,7 @@ class FileProcessor {
 	 * Syncs all marked files in vault
 	 */
 	async processFiles() {
-		const files = await this.fileParser.getSyncableFiles(false);
+		const files = await this.fileParser.getSyncableFiles();
 		const processedFiles: object[] = [];
 
 		if (files.length == 0) {
@@ -52,13 +52,6 @@ class FileProcessor {
 			processedFiles.push(await this.fileParser.parseToJson(file));
 			await this.onlyEverApi.syncFiles(processedFiles);
 		}
-	}
-
-	/*
-	 * Returns an array of files what have ONLY the markedForSyncFlag flag
-	 */
-	async getVaultFilesWithCustomFlag() {
-		return await this.fileParser.getSyncableFiles(true);
 	}
 
 	/*

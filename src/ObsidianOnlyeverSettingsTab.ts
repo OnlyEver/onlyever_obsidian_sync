@@ -10,7 +10,6 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 	constructor(app: App, plugin: MyPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
-		this.onlyEverApi = new OnlyEverApi(this.plugin.settings.apiToken);
 	}
 
 	display(): void {
@@ -22,23 +21,16 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 		});
 
 		new Setting(containerEl)
-			.setName("API TOKEN")
-			.setDesc("Enter API Token here")
+			.setName("PLUGIN TOKEN")
+			.setDesc("Enter Plugin Token here")
 			.addText((text) =>
 				text
-					.setPlaceholder("API Key goes here")
+					.setPlaceholder("Plugin Token")
 					.setValue(this.plugin.settings.apiToken)
 					.onChange(async (value) => {
 						this.plugin.settings.apiToken = value;
 						await this.plugin.saveSettings();
 					})
-			)
-			.addButton((button) => {
-				button.setButtonText("Validate token").onClick(async () => {
-					await this.onlyEverApi.validateApiToken();
-					await this.plugin.saveSettings();
-					await this.plugin.loadSettings();
-				});
-			});
+			);
 	}
 }

@@ -20,22 +20,34 @@ class OnlyEverApi {
 	async syncFiles(files: object[]) {
 		try {
 			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
-			let fileId;
+
 			if (files.length > 0) {
-				return axios({
+				axios({
 					method: "post",
 					url: endpoint,
 					headers: {
 						"Content-Type": "application/json",
 					},
 					data: files,
-				}).then((res: object) => {
-					new Notice(`Synced ${files.length} file(s)`);
-					return res?.data?.data.fileId;
-				});
+				})
+					.then((res: object) => {
+						if (res?.data?.success) {
+							new Notice(
+								`Synced ${files.length} file(s) successfully`
+							);
+						} else {
+							console.log("failure");
+							new Notice(
+								"Notes sync failed. Please ensure you have correct plugin token in the settings."
+							);
+						}
+					})
+					.catch((err) => {
+						new Notice(
+							"Notes sync failed. Please ensure you have correct plugin token in the settings."
+						);
+					});
 			}
-
-			return fileId;
 		} catch (err) {
 			new Notice(`Failed to sync ${files.length} files`);
 		}
