@@ -19,7 +19,7 @@ class OnlyEverApi {
 	 */
 	async syncFiles(files: object[]) {
 		try {
-			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
+			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
 
 			if (files.length > 0) {
 				axios({
@@ -59,7 +59,7 @@ class OnlyEverApi {
 	 */
 	async validateApiToken() {
 		try {
-			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/onlyeverrealm-blegp/endpoint/verifyToken?pluginName=obsidian&token=${this.apiToken}`;
+			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/verifyToken?pluginName=obsidian&token=${this.apiToken}`;
 
 			return axios({
 				method: "post",
