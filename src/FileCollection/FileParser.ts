@@ -212,6 +212,14 @@ class FileParser {
 			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/([\w]+)\.youtube.com\/watch\?v=(.*?)&[^)]+)\))/gi
 		);
 
+		const wikiLink =
+			/(?<!\()https:\/\/([\w]+)\.wikipedia.org\/wiki\/([^\s]+)/gi;
+		const youtubeLink =
+			/(?<!\()https:\/\/([\w]+)\.youtube.com\/watch\?v=([^\s]+)&[^\s)]+/gi;
+
+		content = content.replace(wikiLink, "[[$&|$&|$2]]");
+		content = content.replace(youtubeLink, "[[$&|$&|$2]]");
+
 		const markDownlinks = [
 			...content.matchAll(wikiMarkdownLink),
 			...content.matchAll(youtubeMarkdownLink),
