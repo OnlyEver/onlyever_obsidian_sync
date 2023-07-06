@@ -80,7 +80,6 @@ class OnlyEverApi {
 				}
 			});
 		} catch (err) {
-			console.log(err.message);
 			new Notice(`Failed to validate API token.`);
 		}
 	}
