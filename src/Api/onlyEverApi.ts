@@ -36,7 +36,6 @@ class OnlyEverApi {
 								`Synced ${files.length} file(s) successfully`
 							);
 						} else {
-							console.log("failure");
 							new Notice(
 								"Notes sync failed. Please ensure you have correct plugin token in the settings."
 							);
