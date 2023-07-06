@@ -189,6 +189,9 @@ class FileParser {
 			});
 		}
 
+		if (result[0].content == "") {
+			result.splice(0, 1);
+		}
 		return result;
 	}
 
