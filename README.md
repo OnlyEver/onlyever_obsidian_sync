@@ -7,7 +7,7 @@ This is a plugin for Obsidian (https://obsidian.md) created to sync the obsidian
 The prerequisite for this project are:
 
 -   Obsidian application
--   node: 19
+-   node: 17
 
 ## Installation and Run
 
@@ -23,6 +23,7 @@ Please make sure you have obsidian installed in your system before you begin wit
     ```
     git clone https://github.com/OnlyEver/onlyever_obsidian_sync.git
     ```
+-   Run `npm install` to intall node packages.
 -   Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
 -   Open your obsidian application. In the `community plugin` tab of `settings`, reload the installed plugin section to see the 'Obsidian-Onlyever-plugin'.
 -   Turn on the toggle button for 'Obsidian-Onlyever-plugin'.
