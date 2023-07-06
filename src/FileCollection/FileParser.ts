@@ -130,6 +130,8 @@ class FileParser {
 			);
 		}
 
+		contentsWithoutFlag = this.parseInternalLinks(contentsWithoutFlag);
+
 		return {
 			title: file.basename,
 			slug: `ob-${file.stat.ctime}`,
@@ -193,6 +195,33 @@ class FileParser {
 			result.splice(0, 1);
 		}
 		return result;
+	}
+
+	parseInternalLinks(content: string) {
+		const wikiMarkdownLink = new RegExp(
+			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/([\w]+)\.wikipedia.org\/wiki\/[^)]+)\))/gi
+		);
+		const youtubeMarkdownLink = new RegExp(
+			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/www\.youtube.com\/watch[^)]+)\))/gi
+		);
+		// const wikiLink = /https:\/\/[\w]+\.wikipedia.org\/[^\s\)]+/gi;
+		// const youtubeLink = /https:\/\/www\.youtube.com\/[^\s\)]+/gi;
+
+		const markDownlinks = [
+			...content.matchAll(wikiMarkdownLink),
+			...content.matchAll(youtubeMarkdownLink),
+		].map((m) => ({
+			originalAlias: `[${m[1]}](${m[2]})`,
+			newAlias: `[[${m[1]}|${m[2]}| ]]`,
+		}));
+		// const links = [...content.matchAll(wikiLink), ...content.matchAll(youtubeLink)].map((m) => ( { 'originalAlias' : `${m}`, 'newAlias' : `[[${m[1]}|${m[1]}| ]]` }));
+
+		for (const replacement of [...markDownlinks]) {
+			const { originalAlias, newAlias } = replacement;
+			content = content.replace(originalAlias, newAlias);
+		}
+
+		return content;
 	}
 
 	/**
