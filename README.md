@@ -1,95 +1,46 @@
-# Obsidian Sample Plugin
+# OE Obsidian Plugin
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+This is a plugin for Obsidian (https://obsidian.md) created to sync the obsidian notes to the Only Ever application.
 
-This project uses Typescript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in Typescript Definition format, which contains TSDoc comments describing what it does.
+## Prerequisite
 
-**Note:** The Obsidian API is still in early alpha and is subject to change at any time!
+The prerequisite for this project are:
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+-   Obsidian application
+-   node: 19
 
-## First time developing plugins?
+## Installation and Run
 
-Quick starting guide for new plugin devs:
+Please make sure you have obsidian installed in your system before you begin with the installation process:
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+-   Create an obsidian vault.
+-   Open the folder where your obsidian vault is located. Open `.obsidian` folder, then open `plugins` folder.
+-   Clone your repo to the `plugins` folder with the following command:
+    ```
+    git clone git@github.com:OnlyEver/onlyever_obsidian_sync.git
+    ```
+    OR
+    ```
+    git clone https://github.com/OnlyEver/onlyever_obsidian_sync.git
+    ```
+-   Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
+-   Open your obsidian application. In the `community plugin` tab of `settings`, reload the installed plugin section to see the 'Obsidian-Onlyever-plugin'.
+-   Turn on the toggle button for 'Obsidian-Onlyever-plugin'.
+-   Obsidian plugin is now installed on your obsidian application and you may start syncing you notes.
 
-## Releasing new releases
+## Using Obsidian Plugin
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+OE Obsidian Plugin syncs the obsidian note to the Only Ever application. To sync the note metatag `oe_sync: true` is to be added to the frontmatter of notes that you wish to sync. The tag can by either one of the following process:
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+-   Add the manually to front matter.
+-   Add the tag through the `Mark to Sync` button present on the ribbon
+-   Add tag using your predefined hotkeys.
 
-## Adding your plugin to the community plugin list
+Once the `oe_sync:true` metatag is added to the frontmatter, the notes will be synced during the following processes:
 
-- Check https://github.com/obsidianmd/obsidian-releases/blob/master/plugin-review.md
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+-   when the notes are explictly saved
+-   when obsidian application is initially loaded
+-   on clicking the `Sync Notes` button present in the ribbon
+-   using the predefined hotkey for sync.
 
-## How to use
-
-- Clone this repo.
-- `npm i` or `yarn` to install dependencies
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
-
-If you have multiple URLs, you can also do:
-
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
-
-## API Documentation
-
-See https://github.com/obsidianmd/obsidian-api
+To define hot keys for the obsidian plugin, please visit the Hotkeys tab of the setting. Search for the HotKeys with name 'Obsidian-Onlyever-Plugin', then set desired hotkeys to `Mark for Sync` and `Sync Notes` functionalities.
