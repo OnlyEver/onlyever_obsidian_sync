@@ -23,7 +23,7 @@ Please make sure you have obsidian installed in your system before you begin wit
     ```
     git clone https://github.com/OnlyEver/onlyever_obsidian_sync.git
     ```
--   Run `npm install` to intall node packages.
+-   Run `npm install` to install node packages.
 -   Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
 -   Open your obsidian application. In the `community plugin` tab of `settings`, reload the installed plugin section to see the 'Obsidian-Onlyever-plugin'.
 -   Turn on the toggle button for 'Obsidian-Onlyever-plugin'.
