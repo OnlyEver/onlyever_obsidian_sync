@@ -5,7 +5,6 @@ class FileManager {
 	app: App;
 	ownFiles: TFile[];
 	fileProcessor: FileProcessor;
-	apiToken: string;
 
 	constructor(app: App, apiToken: string) {
 		this.app = app;

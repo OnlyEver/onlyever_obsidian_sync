@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, Notice, TFile } from "obsidian";
 
 interface ObsidianSourceList {
 	title: string;
@@ -12,8 +12,11 @@ interface LinkedFileInfo {
 	originalAlias: string;
 	newAlias: string;
 }
+
 class FileParser {
 	app: App;
+
+	referencesRegex = /---\s*#\s*References:(.*?)---/s;
 
 	//This is for filtering.
 	markForSyncFlag = "oe_sync";
@@ -86,6 +89,7 @@ class FileParser {
 
 	/**
 	 * Checks if file has markForSyncFlag in it or not.
+	 *
 	 * @param file TFile
 	 *
 	 * @returns boolean
@@ -131,13 +135,22 @@ class FileParser {
 		}
 
 		contentsWithoutFlag = this.parseInternalLinks(contentsWithoutFlag);
+		const extractedReferences = this.extractReferences(contentsWithoutFlag);
+		const parsedContents: string | false = this.parseCitation(
+			contentsWithoutFlag,
+			Object.keys(extractedReferences)
+		);
+
+		if (!parsedContents) {
+			new Notice("Failed Parsing contents");
+			throw new Error("Failed Parsing contents");
+		}
 
 		return {
 			title: file.basename,
+			citings: JSON.stringify(this.extractReferences(parsedContents)),
 			slug: `ob-${file.stat.ctime}`,
-			content: JSON.stringify(
-				this.parseMarkdownHeaders(contentsWithoutFlag)
-			),
+			content: JSON.stringify(this.parseMarkdownHeaders(parsedContents)),
 			source_type: "obsidian",
 			description: "Obsidian vault",
 			heading: this.parseHeadings(file),
@@ -292,6 +305,77 @@ class FileParser {
 		} catch (e) {
 			return false;
 		}
+	}
+
+	/*
+	 * Returns key for citation entry in only-ever
+	 */
+	generateReferenceKey(listNumber: string): string {
+		return `cite_note-${listNumber}`;
+	}
+
+	/*
+	 *  Convert references to only-ever citings format
+	 */
+	extractReferences(noteContent: string): [] {
+		const referenceJson: [] = [];
+		const match = noteContent.match(this.referencesRegex);
+		const allReferencesAsString: string =
+			match && match[1] ? match[1].trim() : "";
+
+		if (allReferencesAsString) {
+			const referenceList = allReferencesAsString
+				.split("\n")
+				.filter((line) => line.trim() !== "");
+
+			for (let i = 0; i < referenceList.length; i++) {
+				const listItem = referenceList[i] ?? "";
+
+				if (listItem) {
+					const splitListItem = /^\s*([0-9]+)\.\s*(.*)$/.exec(
+						listItem
+					);
+					if (splitListItem) {
+						const listNumber = splitListItem[1];
+						referenceJson[this.generateReferenceKey(listNumber)] = {
+							[this.generateReferenceKey(listNumber)]:
+								splitListItem[2].trim(),
+						};
+					} else {
+						new Notice("Invalid reference format.");
+						break;
+					}
+				}
+			}
+		}
+
+		return referenceJson;
+	}
+
+	/*
+	 * Changes citation format of: {{@num}} to only-ever citation format
+	 */
+	parseCitation(
+		contentsWithoutFlag: string,
+		citationKeys: string[]
+	): string | false {
+		for (let i = 0; i < citationKeys.length; i++) {
+			if (!citationKeys[i]) {
+				new Notice("Failed parsing citations.");
+				return false;
+			}
+			const citationIndex = citationKeys[i].split("-")[1];
+			const citationRegexWithIndex = new RegExp(
+				`{{@${citationIndex}}}`,
+				"g"
+			);
+			contentsWithoutFlag = contentsWithoutFlag.replace(
+				citationRegexWithIndex,
+				`[[${citationIndex}]](#${citationKeys[i]})`
+			);
+		}
+
+		return contentsWithoutFlag;
 	}
 }
 

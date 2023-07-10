@@ -19,11 +19,9 @@ export default class MyPlugin extends Plugin {
 
 		this.loadHotKeys();
 		this.loadRibbon();
-
 		this.scanVault();
 
-		// uncomment this to make sure that marked files are synced on obsidian open
-		this.manager.fileProcessor.processFiles();
+		// await this.manager.fileProcessor.processFiles();
 
 		const saveCommandDefinition =
 			this.app.commands?.commands?.["editor:save-file"];
