@@ -140,6 +140,7 @@ class FileParser {
 			contentsWithoutFlag,
 			Object.keys(extractedReferences)
 		);
+		const referencesValues: never[] = Object.values(extractedReferences);
 
 		if (!parsedContents) {
 			new Notice("Failed Parsing contents");
@@ -148,7 +149,7 @@ class FileParser {
 
 		return {
 			title: file.basename,
-			citings: JSON.stringify(this.extractReferences(parsedContents)),
+			citings: JSON.stringify(this.mergeReferences(referencesValues)),
 			slug: `ob-${file.stat.ctime}`,
 			content: JSON.stringify(this.parseMarkdownHeaders(parsedContents)),
 			source_type: "obsidian",
@@ -341,6 +342,7 @@ class FileParser {
 							[this.generateReferenceKey(listNumber)]:
 								splitListItem[2].trim(),
 						};
+						console.log(referenceJson);
 					} else {
 						new Notice("Invalid reference format.");
 						break;
@@ -376,6 +378,17 @@ class FileParser {
 		}
 
 		return contentsWithoutFlag;
+	}
+
+	/*
+	 * Merges [{key:val},{key:val}] into {key:val, key:val}
+	 */
+	mergeReferences(referencesArray: never[]): { [key: string]: string } {
+		return referencesArray.reduce((mergedObj, obj) => {
+			const key = Object.keys(obj)[0];
+			mergedObj[key] = obj[key];
+			return mergedObj;
+		}, {});
 	}
 }
 
