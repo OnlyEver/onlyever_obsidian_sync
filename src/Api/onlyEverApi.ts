@@ -1,6 +1,11 @@
 import axios from "axios";
 import { Notice, App } from "obsidian";
 
+interface ApiData {
+	success: boolean;
+	data: object;
+}
+
 class OnlyEverApi {
 	app: App;
 	apiToken: string;
@@ -30,8 +35,8 @@ class OnlyEverApi {
 					},
 					data: files,
 				})
-					.then((res: object) => {
-						if (res?.data?.success) {
+					.then((res) => {
+						if ((res?.data as ApiData).success) {
 							new Notice(
 								`Synced ${files.length} file(s) successfully`
 							);
@@ -71,8 +76,8 @@ class OnlyEverApi {
 					pluginName: "obsidian",
 					token: `${this.apiToken}`,
 				},
-			}).then((res: object) => {
-				if (res?.data?.success) {
+			}).then((res) => {
+				if ((res?.data as ApiData)?.success) {
 					new Notice("Valid API Token");
 				} else {
 					new Notice("Invalid API Token");
