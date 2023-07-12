@@ -25,8 +25,9 @@ export default class MyPlugin extends Plugin {
 		// uncomment this to make sure that marked files are synced on obsidian open
 		this.manager.fileProcessor.processFiles();
 
-		const saveCommandDefinition =
-			this.app.commands?.commands?.["editor:save-file"];
+		const saveCommandDefinition = (this.app as any).commands?.commands?.[
+			"editor:save-file"
+		];
 		const save = saveCommandDefinition?.callback;
 
 		if (typeof save === "function") {
