@@ -4,10 +4,12 @@ import { ObsidianOnlyeverSettingsTab } from "./src/ObsidianOnlyeverSettingsTab";
 
 interface ObsidianOnlyeverSettings {
 	apiToken: string;
+	tokenValidity: boolean;
 }
 
 const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
 	apiToken: "",
+	tokenValidity: false,
 };
 
 export default class MyPlugin extends Plugin {
@@ -35,6 +37,18 @@ export default class MyPlugin extends Plugin {
 				this.manager.onActiveFileSaveAction().then();
 			};
 		}
+
+		this.registerEvent(
+			this.app.vault.on("modify", () => {
+				this.manager.fileProcessor.processSingleFile();
+			})
+		);
+
+		this.registerEvent(
+			this.app.vault.on("rename", () => {
+				this.manager.fileProcessor.processSingleFile();
+			})
+		);
 
 		this.addSettingTab(new ObsidianOnlyeverSettingsTab(this.app, this));
 	}
@@ -69,7 +83,7 @@ export default class MyPlugin extends Plugin {
 			id: "sync-all-obsidian-sync-true-files",
 			name: "Sync Notes",
 			callback: () => {
-				this.manager.fileProcessor.processFiles();
+				this.manager.fileProcessor.processSingleFile();
 			},
 		});
 	}
@@ -80,10 +94,10 @@ export default class MyPlugin extends Plugin {
 		});
 		tickIconEl.addClass("my-plugin-ribbon-class");
 
-		const ribbonIconEl = this.addRibbonIcon("cloud", "Sync Notes", () => {
-			this.manager.fileProcessor.processFiles();
-		});
-		ribbonIconEl.addClass("my-plugin-ribbon-class");
+		// const ribbonIconEl = this.addRibbonIcon("cloud", "Sync Notes", () => {
+		// 	this.manager.fileProcessor.processFiles();
+		// });
+		// ribbonIconEl.addClass("my-plugin-ribbon-class");
 	}
 
 	private scanVault() {

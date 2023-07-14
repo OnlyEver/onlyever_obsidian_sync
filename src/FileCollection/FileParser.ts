@@ -48,7 +48,7 @@ class FileParser {
 
 		if (files) {
 			for (const file of files) {
-				if (this.fileHasSyncFlag(file)) {
+				if (await this.fileHasSyncFlag(file)) {
 					syncableFiles.push(file);
 				}
 			}
@@ -90,12 +90,14 @@ class FileParser {
 	 *
 	 * @returns boolean
 	 */
-	fileHasSyncFlag(file: TFile): boolean {
-		return (
-			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-				this.markForSyncFlag
-			] === true ?? false
-		);
+	async fileHasSyncFlag(file: TFile): Promise<boolean> {
+		let syncValue = false;
+
+		await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+			syncValue = frontmatter["oe_sync"];
+		});
+
+		return syncValue;
 	}
 
 	/**

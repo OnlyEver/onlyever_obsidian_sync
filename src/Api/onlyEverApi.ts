@@ -37,9 +37,7 @@ class OnlyEverApi {
 				})
 					.then((res) => {
 						if ((res?.data as ApiData).success) {
-							new Notice(
-								`Synced ${files.length} file(s) successfully`
-							);
+							new Notice(`Synced file successfully`);
 						} else {
 							new Notice(
 								"Notes sync failed. Please ensure you have correct plugin token in the settings."
@@ -53,7 +51,7 @@ class OnlyEverApi {
 					});
 			}
 		} catch (err) {
-			new Notice(`Failed to sync ${files.length} files`);
+			new Notice(`Failed to sync file`);
 		}
 	}
 
@@ -62,9 +60,9 @@ class OnlyEverApi {
 	 *
 	 * @return ?string
 	 */
-	async validateApiToken() {
+	async validateApiToken(token: string) {
 		try {
-			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/verifyToken?pluginName=obsidian&token=${this.apiToken}`;
+			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/verifyToken?pluginName=obsidian&token=${token}`;
 
 			return axios({
 				method: "post",
@@ -72,19 +70,25 @@ class OnlyEverApi {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				data: {
-					pluginName: "obsidian",
-					token: `${this.apiToken}`,
-				},
-			}).then((res) => {
-				if ((res?.data as ApiData)?.success) {
-					new Notice("Valid API Token");
-				} else {
+			})
+				.then((res) => {
+					if ((res?.data as ApiData)?.success) {
+						new Notice("Valid API Token");
+
+						return true;
+					} else {
+						new Notice("Invalid API Token");
+					}
+				})
+				.catch((err) => {
 					new Notice("Invalid API Token");
-				}
-			});
+
+					return false;
+				});
 		} catch (err) {
 			new Notice(`Failed to validate API token.`);
+
+			return false;
 		}
 	}
 }

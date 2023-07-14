@@ -39,7 +39,7 @@ class FileProcessor {
 	/*
 	 * Syncs active marked file in vault
 	 */
-	async processSingleFile() {
+	async processSingleFile(syncType = true) {
 		const file = this.app.workspace.getActiveFile();
 		const processedFiles: object[] = [];
 
@@ -48,7 +48,7 @@ class FileProcessor {
 			return;
 		}
 
-		if (this.fileParser.fileHasSyncFlag(file)) {
+		if (await this.fileParser.fileHasSyncFlag(file)) {
 			processedFiles.push(await this.fileParser.parseToJson(file));
 			await this.onlyEverApi.syncFiles(processedFiles);
 		}
@@ -57,11 +57,11 @@ class FileProcessor {
 	/*
 	 * Checks if file has been marked for sync.
 	 */
-	activeFileHasSyncFlag(): boolean {
+	async activeFileHasSyncFlag(): Promise<boolean> {
 		const file = this.app.workspace.getActiveFile() ?? false;
 
 		if (file) {
-			return this.fileParser.fileHasSyncFlag(file);
+			return await this.fileParser.fileHasSyncFlag(file);
 		}
 
 		return file;
@@ -74,21 +74,18 @@ class FileProcessor {
 		const file = this.app.workspace.getActiveFile();
 
 		if (file) {
-			if (this.fileParser.fileHasSyncFlag(file)) {
-				new Notice(
-					`Note : ${file.name} has already been marked for sync.`
-				);
+			let markType = true;
 
-				return;
+			if (await this.fileParser.fileHasSyncFlag(file)) {
+				markType = false;
 			}
 
 			await this.app.fileManager.processFrontMatter(
 				file,
 				(frontmatter) => {
-					frontmatter["oe_sync"] = true;
+					frontmatter["oe_sync"] = markType;
 				}
 			);
-			new Notice(`Note : ${file.name} has been marked for sync.`);
 
 			return;
 		}
