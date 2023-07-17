@@ -7,6 +7,8 @@ import {
 } from "obsidian";
 import { OnlyEverApi } from "./Api/onlyEverApi";
 import MyPlugin from "../main";
+// import crossIcon from "./../assets/images/circle-xmark-solid.svg";
+// import checkicon from "./../assets/images/circle-check-solid.svg";
 
 export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 	plugin: MyPlugin;
@@ -26,6 +28,7 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 		containerEl.createEl("h2", {
 			text: "Settings for Obsidian-Onlyever-Plugin.",
 		});
+
 		let textElement: TextComponent;
 		let validityElement: ExtraButtonComponent;
 
@@ -38,16 +41,33 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.apiToken)
 					.onChange(async (value) => {
 						this.plugin.settings.apiToken = value;
-						const result = await this.onlyEverApi.validateApiToken(
-							value
-						);
+						this.plugin.settings.tokenValidity = null;
 
-						this.plugin.settings.tokenValidity = !!result;
+						if (value.length && value != "") {
+							console.log(value);
+							const result =
+								await this.onlyEverApi.validateApiToken(value);
+							this.plugin.settings.tokenValidity = result;
 
-						if (result) {
-							validityElement.setIcon("check-circle-2");
-						} else {
-							validityElement.setIcon("x-circle");
+							if (result) {
+								validityElement.setIcon("checkIcon");
+								errorElement.innerText = "";
+							} else if (result === false) {
+								validityElement.setIcon("crossIcon");
+								errorElement.innerText =
+									value.length > 0
+										? "The PLUGIN TOKEN is incorrect."
+										: "";
+								errorElement.addClass("error");
+							}
+						}
+
+						if (
+							!text.getValue().length ||
+							text.getValue() === null
+						) {
+							errorElement.innerText = "";
+							validityElement.setIcon("circle-slash");
 						}
 
 						await this.plugin.saveSettings();
@@ -55,10 +75,12 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 			})
 			.addExtraButton((extra) => {
 				validityElement = extra as ExtraButtonComponent;
+				validityElement.setIcon("circle-slash");
+
 				if (this.plugin.settings.tokenValidity) {
-					extra.setIcon("check-circle-2");
-				} else {
-					extra.setIcon("x-circle");
+					extra.setIcon("checkIcon");
+				} else if (this.plugin.settings.tokenValidity === false) {
+					extra.setIcon("crossIcon");
 				}
 			})
 			.addToggle((toggle) => {
@@ -72,5 +94,7 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 					}
 				});
 			});
+
+		const errorElement = containerEl.createEl("div");
 	}
 }

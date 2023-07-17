@@ -1,10 +1,10 @@
-import { Plugin } from "obsidian";
+import { Plugin, addIcon } from "obsidian";
 import { FileManager as Manager } from "./src/FileCollection/FileManager";
 import { ObsidianOnlyeverSettingsTab } from "./src/ObsidianOnlyeverSettingsTab";
 
 interface ObsidianOnlyeverSettings {
 	apiToken: string;
-	tokenValidity: boolean;
+	tokenValidity: boolean | null;
 }
 
 const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
@@ -17,6 +17,8 @@ export default class MyPlugin extends Plugin {
 	manager: Manager;
 
 	async onload() {
+		this.loadIcons();
+
 		await this.loadSettings();
 
 		this.loadHotKeys();
@@ -89,7 +91,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	private loadRibbon() {
-		const tickIconEl = this.addRibbonIcon("dice", "Mark for Sync", () => {
+		const tickIconEl = this.addRibbonIcon("mark", "Mark for Sync", () => {
 			this.manager.fileProcessor.markActiveFileForSync();
 		});
 		tickIconEl.addClass("my-plugin-ribbon-class");
@@ -102,5 +104,16 @@ export default class MyPlugin extends Plugin {
 
 	private scanVault() {
 		this.manager = new Manager(app, this.getSettingsValue());
+	}
+
+	private loadIcons(): void {
+		addIcon(
+			"checkIcon",
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="green"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg>'
+		);
+		addIcon(
+			"crossIcon",
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="red"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM175 175c9.4-9.4 24.6-9.4 33.9 0l47 47 47-47c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-47 47 47 47c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-47-47-47 47c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l47-47-47-47c-9.4-9.4-9.4-24.6 0-33.9z"/></svg>'
+		);
 	}
 }

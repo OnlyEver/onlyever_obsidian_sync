@@ -15,15 +15,19 @@ If your plugin does not need CSS, delete this file.
 
 .btn {
 }
+
 .btn-primary {
 	border: 1px solid var(--primary-color);
 }
+
 .btn-success {
 	border: 1px solid var(--success-color);
 }
+
 .btn-warning {
 	border: 1px solid var(--warning-color);
 }
+
 .btn-error {
 	border: 1px solid var(--error-color);
 }
@@ -31,15 +35,19 @@ If your plugin does not need CSS, delete this file.
 .w-100 {
 	width: 100% !important;
 }
+
 .w-75 {
 	width: 75% !important;
 }
+
 .w-50 {
 	width: 50% !important;
 }
+
 .w-25 {
 	width: 25% !important;
 }
+
 .w-fit {
 	width: fit-content !important;
 }
@@ -47,6 +55,7 @@ If your plugin does not need CSS, delete this file.
 .fs-6 {
 	font-size: 14px !important;
 }
+
 .d-flex {
 	display: flex !important;
 }
@@ -62,4 +71,14 @@ If your plugin does not need CSS, delete this file.
 
 .mt-1 {
 	margin-top: 1rem;
+}
+
+.mr-1 {
+	margin-right: 1rem;
+}
+
+.error {
+	color: var(--error-color);
+	margin-top: 1rem;
+	font-size: 75%;
 }

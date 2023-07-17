@@ -73,21 +73,15 @@ class OnlyEverApi {
 			})
 				.then((res) => {
 					if ((res?.data as ApiData)?.success) {
-						new Notice("Valid API Token");
-
 						return true;
-					} else {
-						new Notice("Invalid API Token");
 					}
+
+					return false;
 				})
 				.catch((err) => {
-					new Notice("Invalid API Token");
-
 					return false;
 				});
 		} catch (err) {
-			new Notice(`Failed to validate API token.`);
-
 			return false;
 		}
 	}
