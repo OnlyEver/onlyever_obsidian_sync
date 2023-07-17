@@ -82,3 +82,7 @@ If your plugin does not need CSS, delete this file.
 	margin-top: 1rem;
 	font-size: 75%;
 }
+
+.icon {
+	position: absolute;
+}

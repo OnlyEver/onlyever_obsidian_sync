@@ -7,9 +7,6 @@ import {
 } from "obsidian";
 import { OnlyEverApi } from "./Api/onlyEverApi";
 import MyPlugin from "../main";
-// import crossIcon from "./../assets/images/circle-xmark-solid.svg";
-// import checkicon from "./../assets/images/circle-check-solid.svg";
-
 export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 	plugin: MyPlugin;
 	onlyEverApi: OnlyEverApi;
@@ -54,11 +51,11 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 								errorElement.innerText = "";
 							} else if (result === false) {
 								validityElement.setIcon("crossIcon");
+								errorElement.addClass("error");
 								errorElement.innerText =
 									value.length > 0
 										? "The PLUGIN TOKEN is incorrect."
 										: "";
-								errorElement.addClass("error");
 							}
 						}
 
@@ -75,11 +72,14 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 			})
 			.addExtraButton((extra) => {
 				validityElement = extra as ExtraButtonComponent;
-				validityElement.setIcon("circle-slash");
+				validityElement.setIcon("circle-slash").extraSettingsEl;
 
 				if (this.plugin.settings.tokenValidity) {
 					extra.setIcon("checkIcon");
-				} else if (this.plugin.settings.tokenValidity === false) {
+				} else if (
+					this.plugin.settings.tokenValidity === false &&
+					this.plugin.settings.apiToken.length > 0
+				) {
 					extra.setIcon("crossIcon");
 				}
 			})

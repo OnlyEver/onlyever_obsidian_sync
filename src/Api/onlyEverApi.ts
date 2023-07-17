@@ -37,7 +37,7 @@ class OnlyEverApi {
 				})
 					.then((res) => {
 						if ((res?.data as ApiData).success) {
-							new Notice(`Synced file successfully`);
+							new Notice(`Synced file successfully`, 400);
 						} else {
 							new Notice(
 								"Notes sync failed. Please ensure you have correct plugin token in the settings."
