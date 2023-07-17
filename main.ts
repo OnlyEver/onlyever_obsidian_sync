@@ -91,9 +91,13 @@ export default class MyPlugin extends Plugin {
 	}
 
 	private loadRibbon() {
-		const tickIconEl = this.addRibbonIcon("mark", "Mark for Sync", () => {
-			this.manager.fileProcessor.markActiveFileForSync();
-		});
+		const tickIconEl = this.addRibbonIcon(
+			"highlighter",
+			"Mark for Sync",
+			() => {
+				this.manager.fileProcessor.markActiveFileForSync();
+			}
+		);
 		tickIconEl.addClass("my-plugin-ribbon-class");
 
 		// const ribbonIconEl = this.addRibbonIcon("cloud", "Sync Notes", () => {
