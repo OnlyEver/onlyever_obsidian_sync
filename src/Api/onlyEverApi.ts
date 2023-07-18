@@ -46,7 +46,7 @@ class OnlyEverApi {
 					})
 					.catch((err) => {
 						new Notice(
-							"Notes sync failed. Please ensure you have correct plugin token in the settings."
+							"Notes sync failed. Please ensure you have internet connection."
 						);
 					});
 			}

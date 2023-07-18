@@ -41,7 +41,6 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 						this.plugin.settings.tokenValidity = null;
 
 						if (value.length && value != "") {
-							console.log(value);
 							const result =
 								await this.onlyEverApi.validateApiToken(value);
 							this.plugin.settings.tokenValidity = result;

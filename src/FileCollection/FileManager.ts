@@ -14,7 +14,7 @@ class FileManager {
 	}
 
 	async onActiveFileSaveAction() {
-		this.fileProcessor.processSingleFile().then();
+		this.fileProcessor.processSingleFile();
 	}
 }
 

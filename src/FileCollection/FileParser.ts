@@ -77,9 +77,8 @@ class FileParser {
 	 */
 	async getContentsOfFileWithoutFlag(file: TFile): Promise<string> {
 		const text = await this.getRawContentsOfFile(file);
-		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
-		const end = (frontmatter as any)?.position.end.line + 1;
-		const body = text.split("\n").slice(end).join("\n");
+		const YAMLFrontMatter = /---\s*[\s\S]*?\s*---/g;
+		const body = text.replace(YAMLFrontMatter, "");
 
 		return body;
 	}

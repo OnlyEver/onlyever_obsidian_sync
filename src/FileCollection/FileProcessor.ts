@@ -39,7 +39,7 @@ class FileProcessor {
 	/*
 	 * Syncs active marked file in vault
 	 */
-	async processSingleFile(syncType = true) {
+	async processSingleFile() {
 		const file = this.app.workspace.getActiveFile();
 		const processedFiles: object[] = [];
 
