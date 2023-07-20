@@ -45,9 +45,16 @@ class OnlyEverApi {
 						}
 					})
 					.catch((err) => {
-						new Notice(
-							"Notes sync failed. Please ensure you have internet connection."
-						);
+						console.log(err);
+						let errorMessage =
+							"Notes sync failed. Please ensure you have correct plugin token in the settings.";
+
+						if (err["code"] === "ERR_NETWORK") {
+							errorMessage =
+								"Notes sync failed. Please ensure you have internet connection.";
+						}
+
+						new Notice(errorMessage);
 					});
 			}
 		} catch (err) {
@@ -79,6 +86,14 @@ class OnlyEverApi {
 					return false;
 				})
 				.catch((err) => {
+					if (err["code"] === "ERR_NETWORK") {
+						new Notice(
+							"Token verification failed. Please ensure you have internet connection."
+						);
+
+						return null;
+					}
+
 					return false;
 				});
 		} catch (err) {
