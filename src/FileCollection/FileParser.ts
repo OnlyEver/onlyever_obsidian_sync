@@ -6,12 +6,6 @@ interface ObsidianSourceList {
 	isH1: boolean;
 }
 
-interface LinkedFileInfo {
-	id: string;
-	path: string;
-	originalAlias: string;
-	newAlias: string;
-}
 class FileParser {
 	app: App;
 
@@ -100,19 +94,6 @@ class FileParser {
 	}
 
 	/**
-	 * Checks if file has deleted in it or not.
-	 *
-	 * @param file TFile
-	 *
-	 * @returns boolean
-	 */
-	fileHasDeleteFlag(file: TFile): boolean {
-		return this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-			this.deleteFileFlag
-		];
-	}
-
-	/**
 	 * Parse to source list object format.
 	 *
 	 * @param file TFile
@@ -121,17 +102,10 @@ class FileParser {
 	 */
 	async parseToJson(file: TFile): Promise<object> {
 		let contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
-		const backLinkReplacements = await this.getLinkFilesDetails(file);
 
-		for (const replacement of backLinkReplacements) {
-			const { originalAlias, newAlias } = replacement;
-			contentsWithoutFlag = contentsWithoutFlag.replace(
-				originalAlias,
-				newAlias
-			);
-		}
-
-		contentsWithoutFlag = this.parseInternalLinks(contentsWithoutFlag);
+		contentsWithoutFlag = await this.parseInternalLinks(
+			contentsWithoutFlag
+		);
 
 		return {
 			title: file.basename,
@@ -205,7 +179,7 @@ class FileParser {
 	 *
 	 * @returns string
 	 */
-	parseInternalLinks(content: string): string {
+	async parseInternalLinks(content: string): Promise<string> {
 		const wikiMarkdownLink = new RegExp(
 			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/([\w]+)\.wikipedia.org\/wiki\/(.*?))\))/gi
 		);
@@ -218,8 +192,16 @@ class FileParser {
 		const youtubeLink =
 			/(?<!\()https:\/\/([\w]+)\.youtube.com\/watch\?v=([^\s]+)&[^\s)]+/gi;
 
-		content = content.replace(wikiLink, "[[$&|$&|$2]]");
-		content = content.replace(youtubeLink, "[[$&|$&|$2]]");
+		const internalLink = /(?<!!)\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
+
+		const internalMarkDownLink = await Promise.all(
+			[...content.matchAll(internalLink)].map(async (m) => ({
+				originalAlias: m[2] ? `[[${m[1]}|${m[2]}]]` : `[[${m[1]}]]`,
+				newAlias: m[2]
+					? `[[${m[2]}| |ob-${await this.getFileCtime(m[1])}]]`
+					: `[[${m[1]}| |ob-${await this.getFileCtime(m[1])}]]`,
+			}))
+		);
 
 		const markDownlinks = [
 			...content.matchAll(wikiMarkdownLink),
@@ -229,12 +211,30 @@ class FileParser {
 			newAlias: `[[${m[1]}|${m[2]}|${m[4]}]]`,
 		}));
 
-		for (const replacement of [...markDownlinks]) {
+		content = content.replace(wikiLink, "[[$&|$&|$2]]");
+		content = content.replace(youtubeLink, "[[$&|$&|$2]]");
+
+		for (const replacement of [...internalMarkDownLink, ...markDownlinks]) {
 			const { originalAlias, newAlias } = replacement;
 			content = content.replace(originalAlias, newAlias);
 		}
 
 		return content;
+	}
+
+	/***
+	 * Returns ctime of file based on file path
+		console.log(filePath);
+	 *
+		console.log(stat);
+	 * @param string filePath
+	 *
+	 * @return Promis<string>
+	 */
+	async getFileCtime(filePath: string) {
+		const stat = await this.app.vault.adapter.stat(filePath + ".md");
+
+		return stat?.ctime;
 	}
 
 	/**
@@ -250,42 +250,6 @@ class FileParser {
 		return headings?.map((item) => {
 			return item["heading"];
 		});
-	}
-
-	/**
-	 * Returns json array of LinkedFileInfo that can be used to identify linked document
-	 *
-	 * @param file TFile
-	 * @return LinkedFileInfo[]
-	 */
-	async getLinkFilesDetails(file: TFile) {
-		const linkCollection = this.app.metadataCache.getFileCache(file)?.links;
-		const fileInfoArray: LinkedFileInfo[] = [];
-
-		if (linkCollection) {
-			const files = await this.getSyncableFiles();
-
-			for (let i = 0; i < files.length; i++) {
-				const file: TFile = files[i];
-
-				for (let j = 0; j < linkCollection.length; j++) {
-					const linkItem = linkCollection[j];
-					const filePath = linkItem.link;
-					const alias = this.isValidUrl(filePath)
-						? filePath
-						: `ob-${file.stat.ctime}`;
-
-					fileInfoArray.push({
-						id: alias,
-						path: filePath,
-						originalAlias: linkItem.original,
-						newAlias: `[[${linkItem.link}| |${alias}]]`,
-					});
-				}
-			}
-		}
-
-		return fileInfoArray;
 	}
 
 	/**

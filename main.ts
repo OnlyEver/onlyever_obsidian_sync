@@ -30,10 +30,6 @@ export default class MyPlugin extends Plugin {
 
 		await this.manager.fileProcessor.processFiles();
 
-		if ("serviceWorker" in navigator) {
-			navigator.serviceWorker.register("sw.js");
-		}
-
 		this.scheduledSync();
 		this.addSettingTab(new ObsidianOnlyeverSettingsTab(this.app, this));
 	}
