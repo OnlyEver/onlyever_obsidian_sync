@@ -1,6 +1,7 @@
-import { App, Notice } from "obsidian";
+import { App, CachedMetadata, Notice, TAbstractFile, TFile } from "obsidian";
 import { FileParser } from "./FileParser";
 import { OnlyEverApi } from "../Api/onlyEverApi";
+import { S3 } from "aws-sdk";
 
 class FileProcessor {
 	app: App;
@@ -28,7 +29,6 @@ class FileProcessor {
 		}
 
 		for (const file of files) {
-			// const metadata = this.app.metadataCache.getFileCache(file);
 			processedFiles.push(
 				await this.fileParser.parseToJson(file, file?.parent)
 			);

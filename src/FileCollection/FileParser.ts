@@ -1,4 +1,7 @@
-import { App, TFile, TFolder } from "obsidian";
+import { App, TAbstractFile, TFile, TFolder } from "obsidian";
+// import * as AWS  from "aws-sdk";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
 
 interface ObsidianSourceList {
 	title: string;
@@ -8,13 +11,27 @@ interface ObsidianSourceList {
 
 interface Stat {
 	stat: {
-		ctime: number;
-		mtime: number;
-		size: number;
-	};
+		ctime: number,
+		mtime: number,
+		size: number,
+	},
 	// extension: string,
-	path: string;
+	path: string
 }
+
+const accessKey = process.env.AWS_ACCESS_KEY_ID??'test';
+const secretKey = process.env.AWS_SECRET_ACCESS_KEY??'test';
+
+const s3Bucket = new S3Client({
+	region: process.env.S3_REGION,
+	credentials: {
+		// 	accessKeyId: string;
+		// 	secretAccessKey: string;
+		// }
+		accessKeyId: accessKey,
+		secretAccessKey: secretKey
+	}
+});
 
 class FileParser {
 	app: App;
@@ -190,11 +207,8 @@ class FileParser {
 	 *
 	 * @returns string
 	 */
-	async parseInternalLinks(
-		content: string,
-		parent: null | TFolder
-	): Promise<string> {
-		const siblingObj: { [key: string]: Stat } = {};
+	async parseInternalLinks(content: string, parent: null | TFolder): Promise<string> {
+		let siblingObj: { [key: string]: Stat } = {};
 		const wikiMarkdownLink = new RegExp(
 			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/([\w]+)\.wikipedia.org\/wiki\/(.*?))\))/gi
 		);
@@ -208,6 +222,19 @@ class FileParser {
 			/(?<!\()https:\/\/([\w]+)\.youtube.com\/watch\?v=([^\s]+)&[^\s)]+/gi;
 
 		const internalLink = /(?<!!)\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
+		const internalImageLink = /\!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
+
+
+		if (parent?.children) {
+			for (const sibling of Object.values(parent?.children)) {
+				siblingObj[sibling.name] = {
+					'stat': (sibling as TFile).stat,
+					// 'extension': sibling?.extension,
+					'path': parent?.path
+				}
+			}
+		}
+
 
 		if (parent?.children) {
 			for (const sibling of Object.values(parent?.children)) {
@@ -223,16 +250,18 @@ class FileParser {
 			[...content.matchAll(internalLink)].map(async (m) => ({
 				originalAlias: m[2] ? `[[${m[1]}|${m[2]}]]` : `[[${m[1]}]]`,
 				newAlias: m[2]
-					? `[[${m[2]}| |ob-${await this.getFileCtime(
-							m[1],
-							siblingObj
-					  )}]]`
-					: `[[${m[1]}| |ob-${await this.getFileCtime(
-							m[1],
-							siblingObj
-					  )}]]`,
+					? `[[${m[2]}| |ob-${await this.getFileCtime(m[1], siblingObj)}]]`
+					: `[[${m[1]}| |ob-${await this.getFileCtime(m[1], siblingObj)}]]`,
 			}))
 		);
+
+		const internalImageMarkDownLink = await Promise.all(
+			[...content.matchAll(internalImageLink)].map(async (m) => ({
+				originalAlias: `![[${m[1]}]]`, internalImageLink,
+				newAlias: `(${m[1]})[${await this.getFileUrl(m[1], siblingObj)}]`
+			}))
+		);
+		console.log(internalImageMarkDownLink);
 
 		const markDownlinks = [
 			...content.matchAll(wikiMarkdownLink),
@@ -242,15 +271,64 @@ class FileParser {
 			newAlias: `[[${m[1]}|${m[2]}|${m[4]}]]`,
 		}));
 
+
 		content = content.replace(wikiLink, "[[$&|$&|$2]]");
 		content = content.replace(youtubeLink, "[[$&|$&|$2]]");
 
-		for (const replacement of [...internalMarkDownLink, ...markDownlinks]) {
+		for (const replacement of [...internalMarkDownLink, ...markDownlinks, ...internalImageMarkDownLink]) {
 			const { originalAlias, newAlias } = replacement;
 			content = content.replace(originalAlias, newAlias);
 		}
 
 		return content;
+	}
+
+	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }) {
+		// console.log(filePath, siblings);
+		const files = this.app.vault.getFiles();
+		let fileDetails= {};
+
+
+			if (Object.keys(siblings).contains(filePath)) {
+				const siblingPath = siblings[filePath].path;
+				filePath = `${siblingPath}/${filePath}`;
+			}
+
+			console.log('filePath',filePath);
+
+
+		console.log('second', filePath);
+
+		for (const file of files) {
+			// console.log(file, filePath);
+			if (file.path && file?.path === filePath) {
+				
+				fileDetails = file;
+			}
+		}
+		console.log('details', fileDetails);
+
+		return await this.uploadFile(fileDetails as TFile);
+	}
+
+	async uploadFile(file: TFile) {
+		try {
+			const content = await this.app.vault.read(file);
+			const filePath = `test/${file.path}`;
+			const input = {
+				Body: content,
+				Key: filePath,
+				Bucket: process.env.S3_BUCKET,
+				ContentType: `image/${file.extension}`
+			}
+			const command = new PutObjectCommand(input);
+
+			await s3Bucket.send(command);
+			const encodeFileName = encodeURIComponent(`${filePath}`);
+			return `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${encodeFileName}`;
+		} catch (err) {
+			console.log(err);
+		}
 	}
 
 	/***

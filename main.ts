@@ -14,6 +14,15 @@ const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
 	syncInterval: null,
 };
 
+const basePath = (app.vault.adapter as any).basePath
+
+import * as dotenv from 'dotenv';
+
+dotenv.config({
+ path: `${basePath}/.obsidian/plugins/The-Only-Ever-Plugin/.env`,
+ debug: false
+})
+
 export default class MyPlugin extends Plugin {
 	settings: ObsidianOnlyeverSettings;
 	manager: Manager;
