@@ -28,7 +28,10 @@ class FileProcessor {
 		}
 
 		for (const file of files) {
-			processedFiles.push(await this.fileParser.parseToJson(file));
+			// const metadata = this.app.metadataCache.getFileCache(file);
+			processedFiles.push(
+				await this.fileParser.parseToJson(file, file?.parent)
+			);
 		}
 
 		await this.onlyEverApi.syncFiles(processedFiles);
@@ -45,11 +48,14 @@ class FileProcessor {
 
 		if (!file) {
 			new Notice("No note is open.");
+
 			return;
 		}
 
 		if (await this.fileParser.fileHasSyncFlag(file)) {
-			processedFiles.push(await this.fileParser.parseToJson(file));
+			processedFiles.push(
+				await this.fileParser.parseToJson(file, file?.parent)
+			);
 			await this.onlyEverApi.syncFiles(processedFiles);
 		}
 	}

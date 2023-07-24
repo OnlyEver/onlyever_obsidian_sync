@@ -45,7 +45,6 @@ class OnlyEverApi {
 						}
 					})
 					.catch((err) => {
-						console.log(err);
 						let errorMessage =
 							"Notes sync failed. Please ensure you have correct plugin token in the settings.";
 

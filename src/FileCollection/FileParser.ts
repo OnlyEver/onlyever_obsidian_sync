@@ -1,9 +1,19 @@
-import { App, TFile } from "obsidian";
+import { App, TFile, TFolder } from "obsidian";
 
 interface ObsidianSourceList {
 	title: string;
 	content: string;
 	isH1: boolean;
+}
+
+interface Stat {
+	stat: {
+		ctime: number;
+		mtime: number;
+		size: number;
+	};
+	// extension: string,
+	path: string;
 }
 
 class FileParser {
@@ -100,11 +110,12 @@ class FileParser {
 	 *
 	 * @returns Promise<object>
 	 */
-	async parseToJson(file: TFile): Promise<object> {
+	async parseToJson(file: TFile, parent: null | TFolder): Promise<object> {
 		let contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
 		contentsWithoutFlag = await this.parseInternalLinks(
-			contentsWithoutFlag
+			contentsWithoutFlag,
+			parent
 		);
 
 		return {
@@ -179,7 +190,11 @@ class FileParser {
 	 *
 	 * @returns string
 	 */
-	async parseInternalLinks(content: string): Promise<string> {
+	async parseInternalLinks(
+		content: string,
+		parent: null | TFolder
+	): Promise<string> {
+		const siblingObj: { [key: string]: Stat } = {};
 		const wikiMarkdownLink = new RegExp(
 			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/([\w]+)\.wikipedia.org\/wiki\/(.*?))\))/gi
 		);
@@ -194,12 +209,28 @@ class FileParser {
 
 		const internalLink = /(?<!!)\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
 
+		if (parent?.children) {
+			for (const sibling of Object.values(parent?.children)) {
+				siblingObj[sibling.name] = {
+					stat: (sibling as TFile).stat,
+					// 'extension': sibling?.extension,
+					path: parent?.path,
+				};
+			}
+		}
+
 		const internalMarkDownLink = await Promise.all(
 			[...content.matchAll(internalLink)].map(async (m) => ({
 				originalAlias: m[2] ? `[[${m[1]}|${m[2]}]]` : `[[${m[1]}]]`,
 				newAlias: m[2]
-					? `[[${m[2]}| |ob-${await this.getFileCtime(m[1])}]]`
-					: `[[${m[1]}| |ob-${await this.getFileCtime(m[1])}]]`,
+					? `[[${m[2]}| |ob-${await this.getFileCtime(
+							m[1],
+							siblingObj
+					  )}]]`
+					: `[[${m[1]}| |ob-${await this.getFileCtime(
+							m[1],
+							siblingObj
+					  )}]]`,
 			}))
 		);
 
@@ -224,15 +255,19 @@ class FileParser {
 
 	/***
 	 * Returns ctime of file based on file path
-		console.log(filePath);
 	 *
-		console.log(stat);
 	 * @param string filePath
 	 *
 	 * @return Promis<string>
 	 */
-	async getFileCtime(filePath: string) {
-		const stat = await this.app.vault.adapter.stat(filePath + ".md");
+	async getFileCtime(filePath: string, sibling: { [key: string]: Stat }) {
+		const fileName = `${filePath}.md`;
+
+		if (Object.keys(sibling).contains(fileName)) {
+			return sibling[fileName]["stat"]["ctime"];
+		}
+
+		const stat = await this.app.vault.adapter.stat(fileName);
 
 		return stat?.ctime;
 	}
