@@ -41,14 +41,15 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 						this.plugin.settings.tokenValidity = null;
 
 						if (value.length && value != "") {
-							const result =
+							const result:any =
 								await this.onlyEverApi.validateApiToken(value);
-							this.plugin.settings.tokenValidity = result;
+							this.plugin.settings.tokenValidity = result["status"];
+							this.plugin.settings.imagePath = result["imagePath"];
 
-							if (result) {
+							if (result["status"]) {
 								validityElement.setIcon("checkIcon");
 								errorElement.innerText = "";
-							} else if (result === false) {
+							} else if (result["status"] === false) {
 								validityElement.setIcon("crossIcon");
 								errorElement.addClass("error");
 								errorElement.innerText =

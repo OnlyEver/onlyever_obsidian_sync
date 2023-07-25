@@ -4,6 +4,7 @@ import { Notice, App } from "obsidian";
 interface ApiData {
 	success: boolean;
 	data: object;
+	fileToken: string;
 }
 
 class OnlyEverApi {
@@ -79,10 +80,10 @@ class OnlyEverApi {
 			})
 				.then((res) => {
 					if ((res?.data as ApiData)?.success) {
-						return true;
+						return {'status':true, 'imagePath':(res?.data as ApiData)?.fileToken};
 					}
 
-					return false;
+					return {'status':true, 'imagePath':(res?.data as ApiData)?.fileToken};
 				})
 				.catch((err) => {
 					if (err["code"] === "ERR_NETWORK") {
@@ -90,13 +91,13 @@ class OnlyEverApi {
 							"Token verification failed. Please ensure you have internet connection."
 						);
 
-						return null;
+						return {'status':null, 'imagePath':''};
 					}
 
-					return false;
+					return {'status':false, 'imagePath':''};
 				});
 		} catch (err) {
-			return false;
+			return {'status':false, 'imagePath':''};
 		}
 	}
 }

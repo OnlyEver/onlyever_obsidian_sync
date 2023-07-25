@@ -1,6 +1,7 @@
-import { App, TAbstractFile, TFile, TFolder } from "obsidian";
+import { App, Notice, TAbstractFile, TFile, TFolder, arrayBufferToBase64, getBlobArrayBuffer } from "obsidian";
 // import * as AWS  from "aws-sdk";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+const fs = require('fs');
 
 
 interface ObsidianSourceList {
@@ -19,8 +20,8 @@ interface Stat {
 	path: string
 }
 
-const accessKey = process.env.AWS_ACCESS_KEY_ID??'test';
-const secretKey = process.env.AWS_SECRET_ACCESS_KEY??'test';
+const accessKey = process.env.AWS_ACCESS_KEY_ID ?? 'test';
+const secretKey = process.env.AWS_SECRET_ACCESS_KEY ?? 'test';
 
 const s3Bucket = new S3Client({
 	region: process.env.S3_REGION,
@@ -35,6 +36,7 @@ const s3Bucket = new S3Client({
 
 class FileParser {
 	app: App;
+	imagePath: string;
 
 	//This is for filtering.
 	markForSyncFlag = "oe_sync";
@@ -45,8 +47,9 @@ class FileParser {
 	 *
 	 * @param app
 	 */
-	constructor(app: App) {
+	constructor(app: App, imagePath:string) {
 		this.app = app;
+		this.imagePath = imagePath;
 	}
 
 	/**
@@ -229,7 +232,6 @@ class FileParser {
 			for (const sibling of Object.values(parent?.children)) {
 				siblingObj[sibling.name] = {
 					'stat': (sibling as TFile).stat,
-					// 'extension': sibling?.extension,
 					'path': parent?.path
 				}
 			}
@@ -240,7 +242,6 @@ class FileParser {
 			for (const sibling of Object.values(parent?.children)) {
 				siblingObj[sibling.name] = {
 					stat: (sibling as TFile).stat,
-					// 'extension': sibling?.extension,
 					path: parent?.path,
 				};
 			}
@@ -258,10 +259,9 @@ class FileParser {
 		const internalImageMarkDownLink = await Promise.all(
 			[...content.matchAll(internalImageLink)].map(async (m) => ({
 				originalAlias: `![[${m[1]}]]`, internalImageLink,
-				newAlias: `(${m[1]})[${await this.getFileUrl(m[1], siblingObj)}]`
+				newAlias: `![${m[1]}](${await this.getFileUrl(m[1], siblingObj)})`
 			}))
 		);
-		console.log(internalImageMarkDownLink);
 
 		const markDownlinks = [
 			...content.matchAll(wikiMarkdownLink),
@@ -284,50 +284,58 @@ class FileParser {
 	}
 
 	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }) {
-		// console.log(filePath, siblings);
+
+		if(this.imagePath===''){
+			return '';
+		}
+
 		const files = this.app.vault.getFiles();
-		let fileDetails= {};
+		let fileDetails = {};
 
+		if (Object.keys(siblings).contains(filePath)) {
+			const siblingPath = siblings[filePath].path;
+			filePath = siblingPath === '/' ? filePath : `${siblingPath}/${filePath}`;
 
-			if (Object.keys(siblings).contains(filePath)) {
-				const siblingPath = siblings[filePath].path;
-				filePath = `${siblingPath}/${filePath}`;
-			}
-
-			console.log('filePath',filePath);
-
-
-		console.log('second', filePath);
+		}
 
 		for (const file of files) {
-			// console.log(file, filePath);
 			if (file.path && file?.path === filePath) {
-				
 				fileDetails = file;
+				break;
 			}
 		}
-		console.log('details', fileDetails);
 
 		return await this.uploadFile(fileDetails as TFile);
 	}
 
 	async uploadFile(file: TFile) {
 		try {
-			const content = await this.app.vault.read(file);
-			const filePath = `test/${file.path}`;
+			const content = await this.app.vault.readBinary(file);
+			const base64 = arrayBufferToBase64(content);
+			const base64Data = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
+			const filePath = (`${this.imagePath}/${file.path}`).replace(/ /g,'+');
+			
 			const input = {
-				Body: content,
+				Body: base64Data,
 				Key: filePath,
 				Bucket: process.env.S3_BUCKET,
-				ContentType: `image/${file.extension}`
+				ContentEncoding: 'base64',
+				ContentType: `image/${file.extension}`,
 			}
+
 			const command = new PutObjectCommand(input);
 
-			await s3Bucket.send(command);
+			await s3Bucket.send(command, function (err, data) {
+				if (err) {
+					new Notice('Error occurred while uploading data:'+data);
+				}
+			});
+
 			const encodeFileName = encodeURIComponent(`${filePath}`);
+			
 			return `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${encodeFileName}`;
 		} catch (err) {
-			console.log(err);
+			console.log('error',err);
 		}
 	}
 
@@ -340,12 +348,22 @@ class FileParser {
 	 */
 	async getFileCtime(filePath: string, sibling: { [key: string]: Stat }) {
 		const fileName = `${filePath}.md`;
+		const files:TFile[] = await this.app.vault.getFiles();
 
 		if (Object.keys(sibling).contains(fileName)) {
 			return sibling[fileName]["stat"]["ctime"];
 		}
 
-		const stat = await this.app.vault.adapter.stat(fileName);
+		let stat = await this.app.vault.adapter.stat(fileName);
+
+		if(!stat && fileName){
+			for (const file of files) {
+				if (file.path && file?.path === filePath || file.name===fileName) {
+					 return file?.stat.ctime;
+				}
+			}
+		}
+
 
 		return stat?.ctime;
 	}
