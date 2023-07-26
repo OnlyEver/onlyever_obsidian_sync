@@ -29,6 +29,7 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		this.loadIcons();
+		console.log('dotenv',process.env);
 
 		await this.loadSettings();
 

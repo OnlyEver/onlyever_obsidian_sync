@@ -1,7 +1,6 @@
 import { App, Notice, TAbstractFile, TFile, TFolder, arrayBufferToBase64, getBlobArrayBuffer } from "obsidian";
 // import * as AWS  from "aws-sdk";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-const fs = require('fs');
 
 interface ObsidianSourceList {
 	title: string;
@@ -326,6 +325,7 @@ class FileParser {
 
 			await s3Bucket.send(command, function (err, data) {
 				if (err) {
+					console.log(err);
 					new Notice('Error occurred while uploading data:'+data);
 				}
 			});
