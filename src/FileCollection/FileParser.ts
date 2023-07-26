@@ -3,7 +3,6 @@ import { App, Notice, TAbstractFile, TFile, TFolder, arrayBufferToBase64, getBlo
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 const fs = require('fs');
 
-
 interface ObsidianSourceList {
 	title: string;
 	content: string;
@@ -20,15 +19,14 @@ interface Stat {
 	path: string
 }
 
-const accessKey = process.env.AWS_ACCESS_KEY_ID ?? 'test';
-const secretKey = process.env.AWS_SECRET_ACCESS_KEY ?? 'test';
+const accessKey = process.env.AWS_ACCESS_KEY_ID ?? '';
+const secretKey = process.env.AWS_SECRET_ACCESS_KEY ?? '';
+
+console.log(accessKey, secretKey);
 
 const s3Bucket = new S3Client({
 	region: process.env.S3_REGION,
 	credentials: {
-		// 	accessKeyId: string;
-		// 	secretAccessKey: string;
-		// }
 		accessKeyId: accessKey,
 		secretAccessKey: secretKey
 	}
@@ -302,7 +300,8 @@ class FileParser {
 			if (file.path && file?.path === filePath) {
 				fileDetails = file;
 				break;
-			}
+			}		console.log('process', process.env);
+
 		}
 
 		return await this.uploadFile(fileDetails as TFile);
