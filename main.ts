@@ -5,8 +5,6 @@ import * as dotenv from "dotenv";
 
 dotenv.config({debug:true});
 
-console.log('dotenv',dotenv);
-
 interface ObsidianOnlyeverSettings {
 	apiToken: string;
 	tokenValidity: boolean | null;
@@ -29,8 +27,6 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		this.loadIcons();
-		console.log('dotenv',process.env);
-
 		await this.loadSettings();
 
 		this.loadHotKeys();

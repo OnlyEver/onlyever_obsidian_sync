@@ -21,8 +21,6 @@ interface Stat {
 const accessKey = process.env.AWS_ACCESS_KEY_ID ?? '';
 const secretKey = process.env.AWS_SECRET_ACCESS_KEY ?? '';
 
-console.log(accessKey, secretKey);
-
 const s3Bucket = new S3Client({
 	region: process.env.S3_REGION,
 	credentials: {
@@ -98,7 +96,7 @@ class FileParser {
 	 */
 	async getContentsOfFileWithoutFlag(file: TFile): Promise<string> {
 		const text = await this.getRawContentsOfFile(file);
-		const YAMLFrontMatter = /---\s*[\s\S]*?\s*---/g;
+		const YAMLFrontMatter = /^---\s*[\s\S]*?\s*---/g;
 		const body = text.replace(YAMLFrontMatter, "");
 
 		return body;
@@ -299,7 +297,7 @@ class FileParser {
 			if (file.path && file?.path === filePath) {
 				fileDetails = file;
 				break;
-			}		console.log('process', process.env);
+			}
 
 		}
 
