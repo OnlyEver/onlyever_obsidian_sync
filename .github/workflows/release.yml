@@ -29,11 +29,18 @@ jobs:
               uses: actions/setup-node@v1
               with:
                   node-version: "17.x" # You might need to adjust this value to your own version
+            - name: Create .env file
+              uses: SpicyPizza/create-envfile@v2.0
+              with:
+                  AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}} 
+                  AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}} 
+                  S3_BUCKET: ${{secrets.S3_BUCKET}} 
+                  S3_REGION: ${{secrets.S3_REGION}}
             - name: Build
               id: build
               run: |
                   npm install
-                  npm run build --if-present
+                  npm run build
                   mkdir ${{ env.PLUGIN_NAME }}
                   cp main.js manifest.json ${{ env.PLUGIN_NAME }}
                   zip -r ${{ env.PLUGIN_NAME }}.zip ${{ env.PLUGIN_NAME }}
