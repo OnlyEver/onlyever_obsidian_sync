@@ -1,4 +1,6 @@
-import { App, TFile } from "obsidian";
+import { App, Notice, TAbstractFile, TFile, TFolder, arrayBufferToBase64, getBlobArrayBuffer } from "obsidian";
+// import * as AWS  from "aws-sdk";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 interface ObsidianSourceList {
 	title: string;
@@ -6,14 +8,30 @@ interface ObsidianSourceList {
 	isH1: boolean;
 }
 
-interface LinkedFileInfo {
-	id: string;
-	path: string;
-	originalAlias: string;
-	newAlias: string;
+interface Stat {
+	stat: {
+		ctime: number,
+		mtime: number,
+		size: number,
+	},
+	// extension: string,
+	path: string
 }
+
+const accessKey = process.env.AWS_ACCESS_KEY_ID ?? '';
+const secretKey = process.env.AWS_SECRET_ACCESS_KEY ?? '';
+
+const s3Bucket = new S3Client({
+	region: process.env.S3_REGION,
+	credentials: {
+		accessKeyId: accessKey,
+		secretAccessKey: secretKey
+	}
+});
+
 class FileParser {
 	app: App;
+	imagePath: string;
 
 	//This is for filtering.
 	markForSyncFlag = "oe_sync";
@@ -24,8 +42,9 @@ class FileParser {
 	 *
 	 * @param app
 	 */
-	constructor(app: App) {
+	constructor(app: App, imagePath:string) {
 		this.app = app;
+		this.imagePath = imagePath;
 	}
 
 	/**
@@ -48,7 +67,7 @@ class FileParser {
 
 		if (files) {
 			for (const file of files) {
-				if (this.fileHasSyncFlag(file)) {
+				if (await this.fileHasSyncFlag(file)) {
 					syncableFiles.push(file);
 				}
 			}
@@ -77,9 +96,8 @@ class FileParser {
 	 */
 	async getContentsOfFileWithoutFlag(file: TFile): Promise<string> {
 		const text = await this.getRawContentsOfFile(file);
-		const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
-		const end = (frontmatter as any)?.position.end.line + 1;
-		const body = text.split("\n").slice(end).join("\n");
+		const YAMLFrontMatter = /^---\s*[\s\S]*?\s*---/g;
+		const body = text.replace(YAMLFrontMatter, "");
 
 		return body;
 	}
@@ -90,25 +108,14 @@ class FileParser {
 	 *
 	 * @returns boolean
 	 */
-	fileHasSyncFlag(file: TFile): boolean {
-		return (
-			this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-				this.markForSyncFlag
-			] === true ?? false
-		);
-	}
+	async fileHasSyncFlag(file: TFile): Promise<boolean> {
+		let syncValue = false;
 
-	/**
-	 * Checks if file has deleted in it or not.
-	 *
-	 * @param file TFile
-	 *
-	 * @returns boolean
-	 */
-	fileHasDeleteFlag(file: TFile): boolean {
-		return this.app.metadataCache.getFileCache(file)?.frontmatter?.[
-			this.deleteFileFlag
-		];
+		await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+			syncValue = frontmatter["oe_sync"];
+		});
+
+		return syncValue;
 	}
 
 	/**
@@ -118,19 +125,13 @@ class FileParser {
 	 *
 	 * @returns Promise<object>
 	 */
-	async parseToJson(file: TFile): Promise<object> {
+	async parseToJson(file: TFile, parent: null | TFolder): Promise<object> {
 		let contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
-		const backLinkReplacements = await this.getLinkFilesDetails(file);
 
-		for (const replacement of backLinkReplacements) {
-			const { originalAlias, newAlias } = replacement;
-			contentsWithoutFlag = contentsWithoutFlag.replace(
-				originalAlias,
-				newAlias
-			);
-		}
-
-		contentsWithoutFlag = this.parseInternalLinks(contentsWithoutFlag);
+		contentsWithoutFlag = await this.parseInternalLinks(
+			contentsWithoutFlag,
+			parent
+		);
 
 		return {
 			title: file.basename,
@@ -204,7 +205,8 @@ class FileParser {
 	 *
 	 * @returns string
 	 */
-	parseInternalLinks(content: string): string {
+	async parseInternalLinks(content: string, parent: null | TFolder): Promise<string> {
+		let siblingObj: { [key: string]: Stat } = {};
 		const wikiMarkdownLink = new RegExp(
 			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/([\w]+)\.wikipedia.org\/wiki\/(.*?))\))/gi
 		);
@@ -217,8 +219,44 @@ class FileParser {
 		const youtubeLink =
 			/(?<!\()https:\/\/([\w]+)\.youtube.com\/watch\?v=([^\s]+)&[^\s)]+/gi;
 
-		content = content.replace(wikiLink, "[[$&|$&|$2]]");
-		content = content.replace(youtubeLink, "[[$&|$&|$2]]");
+		const internalLink = /(?<!!)\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
+		const internalImageLink = /\!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
+
+
+		if (parent?.children) {
+			for (const sibling of Object.values(parent?.children)) {
+				siblingObj[sibling.name] = {
+					'stat': (sibling as TFile).stat,
+					'path': parent?.path
+				}
+			}
+		}
+
+
+		if (parent?.children) {
+			for (const sibling of Object.values(parent?.children)) {
+				siblingObj[sibling.name] = {
+					stat: (sibling as TFile).stat,
+					path: parent?.path,
+				};
+			}
+		}
+
+		const internalMarkDownLink = await Promise.all(
+			[...content.matchAll(internalLink)].map(async (m) => ({
+				originalAlias: m[2] ? `[[${m[1]}|${m[2]}]]` : `[[${m[1]}]]`,
+				newAlias: m[2]
+					? `[[${m[2]}| |ob-${await this.getFileCtime(m[1], siblingObj)}]]`
+					: `[[${m[1]}| |ob-${await this.getFileCtime(m[1], siblingObj)}]]`,
+			}))
+		);
+
+		const internalImageMarkDownLink = await Promise.all(
+			[...content.matchAll(internalImageLink)].map(async (m) => ({
+				originalAlias: `![[${m[1]}]]`, internalImageLink,
+				newAlias: `![${m[1]}](${await this.getFileUrl(m[1], siblingObj)})`
+			}))
+		);
 
 		const markDownlinks = [
 			...content.matchAll(wikiMarkdownLink),
@@ -228,12 +266,103 @@ class FileParser {
 			newAlias: `[[${m[1]}|${m[2]}|${m[4]}]]`,
 		}));
 
-		for (const replacement of [...markDownlinks]) {
+
+		content = content.replace(wikiLink, "[[$&|$&|$2]]");
+		content = content.replace(youtubeLink, "[[$&|$&|$2]]");
+
+		for (const replacement of [...internalMarkDownLink, ...markDownlinks, ...internalImageMarkDownLink]) {
 			const { originalAlias, newAlias } = replacement;
 			content = content.replace(originalAlias, newAlias);
 		}
 
 		return content;
+	}
+
+	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }) {
+
+		if(this.imagePath===''){
+			return '';
+		}
+
+		const files = this.app.vault.getFiles();
+		let fileDetails = {};
+
+		if (Object.keys(siblings).contains(filePath)) {
+			const siblingPath = siblings[filePath].path;
+			filePath = siblingPath === '/' ? filePath : `${siblingPath}/${filePath}`;
+
+		}
+
+		for (const file of files) {
+			if (file.path && file?.path === filePath) {
+				fileDetails = file;
+				break;
+			}
+
+		}
+
+		return await this.uploadFile(fileDetails as TFile);
+	}
+
+	async uploadFile(file: TFile) {
+		try {
+			const content = await this.app.vault.readBinary(file);
+			const base64 = arrayBufferToBase64(content);
+			const base64Data = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
+			const filePath = (`${this.imagePath}/${file.path}`).replace(/ /g,'+');
+			
+			const input = {
+				Body: base64Data,
+				Key: filePath,
+				Bucket: process.env.S3_BUCKET,
+				ContentEncoding: 'base64',
+				ContentType: `image/${file.extension}`,
+			}
+
+			const command = new PutObjectCommand(input);
+
+			await s3Bucket.send(command, function (err, data) {
+				if (err) {
+					console.log(err);
+					new Notice('Error occurred while uploading data:'+data);
+				}
+			});
+
+			const encodeFileName = encodeURIComponent(`${filePath}`);
+			
+			return `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${encodeFileName}`;
+		} catch (err) {
+			console.log('error',err);
+		}
+	}
+
+	/***
+	 * Returns ctime of file based on file path
+	 *
+	 * @param string filePath
+	 *
+	 * @return Promis<string>
+	 */
+	async getFileCtime(filePath: string, sibling: { [key: string]: Stat }) {
+		const fileName = `${filePath}.md`;
+		const files:TFile[] = await this.app.vault.getFiles();
+
+		if (Object.keys(sibling).contains(fileName)) {
+			return sibling[fileName]["stat"]["ctime"];
+		}
+
+		let stat = await this.app.vault.adapter.stat(fileName);
+
+		if(!stat && fileName){
+			for (const file of files) {
+				if (file.path && file?.path === filePath || file.name===fileName) {
+					 return file?.stat.ctime;
+				}
+			}
+		}
+
+
+		return stat?.ctime;
 	}
 
 	/**
@@ -249,42 +378,6 @@ class FileParser {
 		return headings?.map((item) => {
 			return item["heading"];
 		});
-	}
-
-	/**
-	 * Returns json array of LinkedFileInfo that can be used to identify linked document
-	 *
-	 * @param file TFile
-	 * @return LinkedFileInfo[]
-	 */
-	async getLinkFilesDetails(file: TFile) {
-		const linkCollection = this.app.metadataCache.getFileCache(file)?.links;
-		const fileInfoArray: LinkedFileInfo[] = [];
-
-		if (linkCollection) {
-			const files = await this.getSyncableFiles();
-
-			for (let i = 0; i < files.length; i++) {
-				const file: TFile = files[i];
-
-				for (let j = 0; j < linkCollection.length; j++) {
-					const linkItem = linkCollection[j];
-					const filePath = linkItem.link;
-					const alias = this.isValidUrl(filePath)
-						? filePath
-						: `ob-${file.stat.ctime}`;
-
-					fileInfoArray.push({
-						id: alias,
-						path: filePath,
-						originalAlias: linkItem.original,
-						newAlias: `[[${linkItem.link}| |${alias}]]`,
-					});
-				}
-			}
-		}
-
-		return fileInfoArray;
 	}
 
 	/**

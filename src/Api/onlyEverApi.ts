@@ -4,6 +4,7 @@ import { Notice, App } from "obsidian";
 interface ApiData {
 	success: boolean;
 	data: object;
+	fileToken: string;
 }
 
 class OnlyEverApi {
@@ -37,9 +38,7 @@ class OnlyEverApi {
 				})
 					.then((res) => {
 						if ((res?.data as ApiData).success) {
-							new Notice(
-								`Synced ${files.length} file(s) successfully`
-							);
+							new Notice(`Synced file successfully`, 400);
 						} else {
 							new Notice(
 								"Notes sync failed. Please ensure you have correct plugin token in the settings."
@@ -47,13 +46,19 @@ class OnlyEverApi {
 						}
 					})
 					.catch((err) => {
-						new Notice(
-							"Notes sync failed. Please ensure you have correct plugin token in the settings."
-						);
+						let errorMessage =
+							"Notes sync failed. Please ensure you have correct plugin token in the settings.";
+
+						if (err["code"] === "ERR_NETWORK") {
+							errorMessage =
+								"Notes sync failed. Please ensure you have internet connection.";
+						}
+
+						new Notice(errorMessage);
 					});
 			}
 		} catch (err) {
-			new Notice(`Failed to sync ${files.length} files`);
+			new Notice(`Failed to sync file`);
 		}
 	}
 
@@ -62,9 +67,9 @@ class OnlyEverApi {
 	 *
 	 * @return ?string
 	 */
-	async validateApiToken() {
+	async validateApiToken(token: string) {
 		try {
-			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/verifyToken?pluginName=obsidian&token=${this.apiToken}`;
+			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/verifyToken?pluginName=obsidian&token=${token}`;
 
 			return axios({
 				method: "post",
@@ -72,19 +77,27 @@ class OnlyEverApi {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				data: {
-					pluginName: "obsidian",
-					token: `${this.apiToken}`,
-				},
-			}).then((res) => {
-				if ((res?.data as ApiData)?.success) {
-					new Notice("Valid API Token");
-				} else {
-					new Notice("Invalid API Token");
-				}
-			});
+			})
+				.then((res) => {
+					if ((res?.data as ApiData)?.success) {
+						return {'status':true, 'imagePath':(res?.data as ApiData)?.fileToken};
+					}
+
+					return {'status':true, 'imagePath':(res?.data as ApiData)?.fileToken};
+				})
+				.catch((err) => {
+					if (err["code"] === "ERR_NETWORK") {
+						new Notice(
+							"Token verification failed. Please ensure you have internet connection."
+						);
+
+						return {'status':null, 'imagePath':''};
+					}
+
+					return {'status':false, 'imagePath':''};
+				});
 		} catch (err) {
-			new Notice(`Failed to validate API token.`);
+			return {'status':false, 'imagePath':''};
 		}
 	}
 }

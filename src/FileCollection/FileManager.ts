@@ -7,14 +7,14 @@ class FileManager {
 	fileProcessor: FileProcessor;
 	apiToken: string;
 
-	constructor(app: App, apiToken: string) {
+	constructor(app: App, apiToken: string, imagePath:string) {
 		this.app = app;
 		this.ownFiles = [];
-		this.fileProcessor = new FileProcessor(this.app, apiToken);
+		this.fileProcessor = new FileProcessor(this.app, apiToken,imagePath);
 	}
 
 	async onActiveFileSaveAction() {
-		this.fileProcessor.processSingleFile().then();
+		this.fileProcessor.processSingleFile();
 	}
 }
 

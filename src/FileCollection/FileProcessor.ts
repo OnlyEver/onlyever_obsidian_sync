@@ -1,16 +1,18 @@
-import { App, Notice } from "obsidian";
+import { App, CachedMetadata, Notice, TAbstractFile, TFile } from "obsidian";
 import { FileParser } from "./FileParser";
 import { OnlyEverApi } from "../Api/onlyEverApi";
+import { S3 } from "aws-sdk";
 
 class FileProcessor {
 	app: App;
 	fileParser: FileParser;
 	onlyEverApi: OnlyEverApi;
 	apiToken: string;
+	imagePath: string;
 
-	constructor(app: App, apiToken: string) {
+	constructor(app: App, apiToken: string, imagePath:string) {
 		this.app = app;
-		this.fileParser = new FileParser(app);
+		this.fileParser = new FileParser(app,imagePath);
 		this.apiToken = apiToken;
 		this.onlyEverApi = new OnlyEverApi(apiToken);
 	}
@@ -28,7 +30,9 @@ class FileProcessor {
 		}
 
 		for (const file of files) {
-			processedFiles.push(await this.fileParser.parseToJson(file));
+			processedFiles.push(
+				await this.fileParser.parseToJson(file, file?.parent)
+			);
 		}
 
 		await this.onlyEverApi.syncFiles(processedFiles);
@@ -45,11 +49,14 @@ class FileProcessor {
 
 		if (!file) {
 			new Notice("No note is open.");
+
 			return;
 		}
 
-		if (this.fileParser.fileHasSyncFlag(file)) {
-			processedFiles.push(await this.fileParser.parseToJson(file));
+		if (await this.fileParser.fileHasSyncFlag(file)) {
+			processedFiles.push(
+				await this.fileParser.parseToJson(file, file?.parent)
+			);
 			await this.onlyEverApi.syncFiles(processedFiles);
 		}
 	}
@@ -57,11 +64,11 @@ class FileProcessor {
 	/*
 	 * Checks if file has been marked for sync.
 	 */
-	activeFileHasSyncFlag(): boolean {
+	async activeFileHasSyncFlag(): Promise<boolean> {
 		const file = this.app.workspace.getActiveFile() ?? false;
 
 		if (file) {
-			return this.fileParser.fileHasSyncFlag(file);
+			return await this.fileParser.fileHasSyncFlag(file);
 		}
 
 		return file;
@@ -74,21 +81,18 @@ class FileProcessor {
 		const file = this.app.workspace.getActiveFile();
 
 		if (file) {
-			if (this.fileParser.fileHasSyncFlag(file)) {
-				new Notice(
-					`Note : ${file.name} has already been marked for sync.`
-				);
+			let markType = true;
 
-				return;
+			if (await this.fileParser.fileHasSyncFlag(file)) {
+				markType = false;
 			}
 
 			await this.app.fileManager.processFrontMatter(
 				file,
 				(frontmatter) => {
-					frontmatter["oe_sync"] = true;
+					frontmatter["oe_sync"] = markType;
 				}
 			);
-			new Notice(`Note : ${file.name} has been marked for sync.`);
 
 			return;
 		}
