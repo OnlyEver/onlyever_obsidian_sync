@@ -100,6 +100,36 @@ class OnlyEverApi {
 			return {'status':false, 'imagePath':''};
 		}
 	}
+
+	async syncImages(data:object){
+		console.log('eta pugyo')
+		try {
+			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
+			let fileUrl = '';
+				axios({
+					method: "post",
+					url: endpoint,
+					headers: {
+						"Content-Type": "application/json",
+					},
+					data: data,
+				}).then((res) => {
+					if ((res?.data as ApiData).success) {
+						new Notice(`Synced file successfully`, 400);
+
+						fileUrl = res.data.filePath;
+					} else {
+						new Notice(
+							"Notes sync failed. Please ensure you have correct plugin token in the settings."
+						);
+					}
+				})
+
+			return fileUrl;
+		}catch (e){
+			console.log(e)
+		}
+	}
 }
 
 export { OnlyEverApi };
