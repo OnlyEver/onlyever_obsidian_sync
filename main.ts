@@ -3,8 +3,6 @@ import { FileManager as Manager } from "./src/FileCollection/FileManager";
 import { ObsidianOnlyeverSettingsTab } from "./src/ObsidianOnlyeverSettingsTab";
 import * as dotenv from "dotenv";
 
-dotenv.config({debug:true});
-
 interface ObsidianOnlyeverSettings {
 	apiToken: string;
 	tokenValidity: boolean | null;
@@ -20,6 +18,11 @@ const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
 };
 
 const basePath = (app.vault.adapter as any).basePath
+
+dotenv.config({
+	path: `${basePath}/.obsidian/plugins/the-only-ever-plugin/.env`,
+	debug: false
+});
 
 export default class MyPlugin extends Plugin {
 	settings: ObsidianOnlyeverSettings;
