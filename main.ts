@@ -20,7 +20,6 @@ const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
 const basePath = (app.vault.adapter as any).basePath
 
 dotenv.config({
-	path: `${basePath}/.obsidian/plugins/the-only-ever-plugin/.env`,
 	debug: false
 });
 
