@@ -1,6 +1,4 @@
-import { App, Notice, TFile, TFolder, arrayBufferToBase64 } from "obsidian";
-// import * as AWS  from "aws-sdk";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { App, TFile, TFolder, arrayBufferToBase64 } from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
 
 interface ObsidianSourceList {
@@ -18,17 +16,6 @@ interface Stat {
 	// extension: string,
 	path: string
 }
-
-const accessKey = process.env.AWS_ACCESS_KEY_ID ?? '';
-const secretKey = process.env.AWS_SECRET_ACCESS_KEY ?? '';
-
-const s3Bucket = new S3Client({
-	region: process.env.S3_REGION,
-	credentials: {
-		accessKeyId: accessKey,
-		secretAccessKey: secretKey
-	}
-});
 
 class FileParser {
 	app: App;
@@ -281,7 +268,6 @@ class FileParser {
 	}
 
 	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }, apiToken: null | string) {
-		console.log('getFileUrl');
 		if(this.imagePath===''){
 			return '';
 		}
@@ -307,7 +293,6 @@ class FileParser {
 	}
 
 	async uploadFile(file: TFile, apiToken: null | string) {
-		console.log('upload file')
 		try {
 			if(apiToken){
 				const onlyEverApi =  new OnlyEverApi(apiToken)
@@ -324,20 +309,6 @@ class FileParser {
 				}
 				return await onlyEverApi.syncImages(input);
 			}
-
-			// const command = new PutObjectCommand(input);
-			//
-			// await s3Bucket.send(command, function (err, data) {
-			// 	if (err) {
-			// 		console.log(err);
-			// 		new Notice('Error occurred while uploading data:'+data);
-			// 	}
-			// });
-			//
-			// const encodeFileName = encodeURIComponent(`${filePath}`);
-			//
-			// console.log('upload', process.env.S3_BUCKET);
-			// return `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${encodeFileName}`;
 		} catch (err) {
 			console.log('error',err);
 		}
@@ -347,7 +318,7 @@ class FileParser {
 	 * Returns ctime of file based on file path
 	 *
 	 *
-	 * @return Promis<string>
+	 * @return Promise<string>
 	 *
 	 * @param filePath
 	 * @param sibling

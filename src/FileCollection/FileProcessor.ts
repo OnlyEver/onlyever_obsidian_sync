@@ -56,6 +56,7 @@ class FileProcessor {
 			processedFiles.push(
 				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
 			);
+			
 			await this.onlyEverApi.syncFiles(processedFiles);
 		}
 	}
