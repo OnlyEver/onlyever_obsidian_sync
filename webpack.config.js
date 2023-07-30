@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+// import dotenv from 'dotenv';
 import path from 'path';
 import webpack from "webpack";
 
@@ -8,7 +8,7 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config();
+// dotenv.config();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
