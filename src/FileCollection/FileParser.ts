@@ -292,8 +292,8 @@ class FileParser {
 				const onlyEverApi =  new OnlyEverApi(apiToken)
 				const content = await this.app.vault.readBinary(file);
 				const base64 = arrayBufferToBase64(content);
-				// const base64Data = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
-				const filePath = (`${file.path}`).replace(/ /g,'+');
+				const base64Data = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
+				const filePath = file.path.replace(/ /g,'+');
 
 				const input = {
 					Body: base64,
@@ -302,9 +302,7 @@ class FileParser {
 					ContentType: `image/${file.extension}`,
 				}
 
-				const fileUrl =await onlyEverApi.syncImages(input);
-
-				return fileUrl;
+				return await onlyEverApi.syncImages(input);
 			}
 		} catch (err) {
 			console.log('error',err);
