@@ -1,18 +1,16 @@
-import { App, CachedMetadata, Notice, TAbstractFile, TFile } from "obsidian";
+import { App, Notice } from "obsidian";
 import { FileParser } from "./FileParser";
 import { OnlyEverApi } from "../Api/onlyEverApi";
-import { S3 } from "aws-sdk";
 
 class FileProcessor {
 	app: App;
 	fileParser: FileParser;
 	onlyEverApi: OnlyEverApi;
 	apiToken: string;
-	imagePath: string;
 
-	constructor(app: App, apiToken: string, imagePath:string) {
+	constructor(app: App, apiToken: string) {
 		this.app = app;
-		this.fileParser = new FileParser(app,imagePath);
+		this.fileParser = new FileParser(app);
 		this.apiToken = apiToken;
 		this.onlyEverApi = new OnlyEverApi(apiToken);
 	}
@@ -31,7 +29,7 @@ class FileProcessor {
 
 		for (const file of files) {
 			processedFiles.push(
-				await this.fileParser.parseToJson(file, file?.parent)
+				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
 			);
 		}
 
@@ -55,8 +53,9 @@ class FileProcessor {
 
 		if (await this.fileParser.fileHasSyncFlag(file)) {
 			processedFiles.push(
-				await this.fileParser.parseToJson(file, file?.parent)
+				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
 			);
+			
 			await this.onlyEverApi.syncFiles(processedFiles);
 		}
 	}

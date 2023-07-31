@@ -1,6 +1,5 @@
-import { App, Notice, TAbstractFile, TFile, TFolder, arrayBufferToBase64, getBlobArrayBuffer } from "obsidian";
-// import * as AWS  from "aws-sdk";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { App, TFile, TFolder, arrayBufferToBase64 } from "obsidian";
+import {OnlyEverApi} from "../Api/onlyEverApi";
 
 interface ObsidianSourceList {
 	title: string;
@@ -18,20 +17,8 @@ interface Stat {
 	path: string
 }
 
-const accessKey = process.env.AWS_ACCESS_KEY_ID ?? '';
-const secretKey = process.env.AWS_SECRET_ACCESS_KEY ?? '';
-
-const s3Bucket = new S3Client({
-	region: process.env.S3_REGION,
-	credentials: {
-		accessKeyId: accessKey,
-		secretAccessKey: secretKey
-	}
-});
-
 class FileParser {
 	app: App;
-	imagePath: string;
 
 	//This is for filtering.
 	markForSyncFlag = "oe_sync";
@@ -42,9 +29,8 @@ class FileParser {
 	 *
 	 * @param app
 	 */
-	constructor(app: App, imagePath:string) {
+	constructor(app: App) {
 		this.app = app;
-		this.imagePath = imagePath;
 	}
 
 	/**
@@ -125,12 +111,13 @@ class FileParser {
 	 *
 	 * @returns Promise<object>
 	 */
-	async parseToJson(file: TFile, parent: null | TFolder): Promise<object> {
+	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
 		let contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
 		contentsWithoutFlag = await this.parseInternalLinks(
 			contentsWithoutFlag,
-			parent
+			parent,
+			apiToken
 		);
 
 		return {
@@ -205,8 +192,8 @@ class FileParser {
 	 *
 	 * @returns string
 	 */
-	async parseInternalLinks(content: string, parent: null | TFolder): Promise<string> {
-		let siblingObj: { [key: string]: Stat } = {};
+	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string): Promise<string> {
+		const siblingObj: { [key: string]: Stat } = {};
 		const wikiMarkdownLink = new RegExp(
 			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/([\w]+)\.wikipedia.org\/wiki\/(.*?))\))/gi
 		);
@@ -254,7 +241,7 @@ class FileParser {
 		const internalImageMarkDownLink = await Promise.all(
 			[...content.matchAll(internalImageLink)].map(async (m) => ({
 				originalAlias: `![[${m[1]}]]`, internalImageLink,
-				newAlias: `![${m[1]}](${await this.getFileUrl(m[1], siblingObj)})`
+				newAlias: `![${m[1]}](${await this.getFileUrl(m[1], siblingObj, apiToken)})`
 			}))
 		);
 
@@ -278,12 +265,7 @@ class FileParser {
 		return content;
 	}
 
-	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }) {
-
-		if(this.imagePath===''){
-			return '';
-		}
-
+	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }, apiToken: null | string) {
 		const files = this.app.vault.getFiles();
 		let fileDetails = {};
 
@@ -301,36 +283,27 @@ class FileParser {
 
 		}
 
-		return await this.uploadFile(fileDetails as TFile);
+		return await this.uploadFile(fileDetails as TFile, apiToken);
 	}
 
-	async uploadFile(file: TFile) {
+	async uploadFile(file: TFile, apiToken: null | string) {
 		try {
-			const content = await this.app.vault.readBinary(file);
-			const base64 = arrayBufferToBase64(content);
-			const base64Data = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
-			const filePath = (`${this.imagePath}/${file.path}`).replace(/ /g,'+');
-			
-			const input = {
-				Body: base64Data,
-				Key: filePath,
-				Bucket: process.env.S3_BUCKET,
-				ContentEncoding: 'base64',
-				ContentType: `image/${file.extension}`,
-			}
+			if(apiToken){
+				const onlyEverApi =  new OnlyEverApi(apiToken)
+				const content = await this.app.vault.readBinary(file);
+				const base64 = arrayBufferToBase64(content);
+				const base64Data = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
+				const filePath = file.path.replace(/ /g,'+');
 
-			const command = new PutObjectCommand(input);
-
-			await s3Bucket.send(command, function (err, data) {
-				if (err) {
-					console.log(err);
-					new Notice('Error occurred while uploading data:'+data);
+				const input = {
+					Body: base64,
+					Key: filePath,
+					ContentEncoding: 'base64',
+					ContentType: `image/${file.extension}`,
 				}
-			});
 
-			const encodeFileName = encodeURIComponent(`${filePath}`);
-			
-			return `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${encodeFileName}`;
+				return await onlyEverApi.syncImages(input);
+			}
 		} catch (err) {
 			console.log('error',err);
 		}
@@ -339,9 +312,11 @@ class FileParser {
 	/***
 	 * Returns ctime of file based on file path
 	 *
-	 * @param string filePath
 	 *
-	 * @return Promis<string>
+	 * @return Promise<string>
+	 *
+	 * @param filePath
+	 * @param sibling
 	 */
 	async getFileCtime(filePath: string, sibling: { [key: string]: Stat }) {
 		const fileName = `${filePath}.md`;
@@ -351,12 +326,12 @@ class FileParser {
 			return sibling[fileName]["stat"]["ctime"];
 		}
 
-		let stat = await this.app.vault.adapter.stat(fileName);
+		const stat = await this.app.vault.adapter.stat(fileName);
 
 		if(!stat && fileName){
 			for (const file of files) {
 				if (file.path && file?.path === filePath || file.name===fileName) {
-					 return file?.stat.ctime;
+					return file?.stat.ctime;
 				}
 			}
 		}
