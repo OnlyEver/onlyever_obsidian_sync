@@ -131,6 +131,7 @@ class FileParser {
 			heading: this.parseHeadings(file),
 			ctime: new Date(file.stat.ctime),
 			mtime: new Date(file.stat.mtime),
+			user_list: []
 		};
 	}
 
@@ -147,17 +148,24 @@ class FileParser {
 		let currentHeader = "";
 		let currentContent = "";
 		let isH1 = false;
+		let insideCodeTag = false;
 
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
-			const match = line.match(/^(#+)\s+(.*)$/);
+			const matchHeader = line.match(/^(#+)\s+(.*)$/);
+			const matchStartBlock = line.match(/^~~~.*$|^```.*$/);
 
-			if (match) {
-				const headerLevel = match[1].length ?? 0;
-				const headerContent = match[2];
-				if (currentHeader !== null) {
+			if(matchStartBlock){
+				insideCodeTag=!insideCodeTag;
+			}
+
+			if(!insideCodeTag && matchHeader){
+				const headerLevel = matchHeader[1].length;
+				const headerContent = matchHeader[2];
+
+				if (currentHeader !== "") {
 					result.push({
-						title: currentHeader?.trim(),
+						title: currentHeader.trim(),
 						content: currentContent.trim(),
 						isH1: isH1,
 					});
@@ -165,13 +173,13 @@ class FileParser {
 
 				currentHeader = headerContent;
 				currentContent = "";
-				isH1 = headerLevel === 1;
-			} else {
+				isH1 = headerLevel === 1
+			}else{
 				currentContent += line + "\n";
 			}
 		}
 
-		if (currentHeader !== null) {
+		if (currentHeader !== "" || currentHeader !== null) {
 			result.push({
 				title: currentHeader?.trim(),
 				content: currentContent.trim(),
@@ -179,14 +187,15 @@ class FileParser {
 			});
 		}
 
-		if (result[0].content == "") {
+		if (result[0] && result[0].content == "") {
 			result.splice(0, 1);
 		}
+
 		return result;
 	}
 
 	/**
-	 * Update the internal links related to wiki and youtube with [alias|link|] format
+	 * Update the internal links related to wiki and YouTube with [alias|link|] format
 	 *
 	 * @param content
 	 *
@@ -292,7 +301,6 @@ class FileParser {
 				const onlyEverApi =  new OnlyEverApi(apiToken)
 				const content = await this.app.vault.readBinary(file);
 				const base64 = arrayBufferToBase64(content);
-				const base64Data = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
 				const filePath = file.path.replace(/ /g,'+');
 
 				const input = {
