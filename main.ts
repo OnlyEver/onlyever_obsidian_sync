@@ -7,14 +7,12 @@ interface ObsidianOnlyeverSettings {
 	apiToken: string;
 	tokenValidity: boolean | null;
 	syncInterval: any;
-	imagePath:'';
 }
 
 const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
 	apiToken: "",
 	tokenValidity: false,
 	syncInterval: null,
-	imagePath:''
 };
 
 
@@ -89,7 +87,7 @@ export default class MyPlugin extends Plugin {
 	}
 
 	private scanVault() {
-		this.manager = new Manager(app, this.getSettingsValue(), this.settings.imagePath);
+		this.manager = new Manager(app, this.getSettingsValue());
 	}
 
 	private loadIcons(): void {

@@ -19,7 +19,6 @@ interface Stat {
 
 class FileParser {
 	app: App;
-	imagePath: string;
 
 	//This is for filtering.
 	markForSyncFlag = "oe_sync";
@@ -30,9 +29,8 @@ class FileParser {
 	 *
 	 * @param app
 	 */
-	constructor(app: App, imagePath:string) {
+	constructor(app: App) {
 		this.app = app;
-		this.imagePath = imagePath;
 	}
 
 	/**
@@ -268,10 +266,6 @@ class FileParser {
 	}
 
 	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }, apiToken: null | string) {
-		if(this.imagePath===''){
-			return '';
-		}
-
 		const files = this.app.vault.getFiles();
 		let fileDetails = {};
 
@@ -299,7 +293,7 @@ class FileParser {
 				const content = await this.app.vault.readBinary(file);
 				const base64 = arrayBufferToBase64(content);
 				const base64Data = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
-				const filePath = (`${this.imagePath}/${file.path}`).replace(/ /g,'+');
+				const filePath = (`${file.path}`).replace(/ /g,'+');
 
 				const input = {
 					Body: base64,

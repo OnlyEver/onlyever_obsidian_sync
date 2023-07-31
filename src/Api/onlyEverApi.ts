@@ -80,10 +80,10 @@ class OnlyEverApi {
 			})
 				.then((res) => {
 					if ((res?.data as ApiData)?.success) {
-						return {'status':true, 'imagePath':(res?.data as ApiData)?.fileToken};
+						return {'status':true};
 					}
 
-					return {'status':true, 'imagePath':(res?.data as ApiData)?.fileToken};
+					return {'status':true};
 				})
 				.catch((err) => {
 					if (err["code"] === "ERR_NETWORK") {
@@ -91,18 +91,19 @@ class OnlyEverApi {
 							"Token verification failed. Please ensure you have internet connection."
 						);
 
-						return {'status':null, 'imagePath':''};
+						return {'status':null};
 					}
 
-					return {'status':false, 'imagePath':''};
+					return {'status':false};
 				});
 		} catch (err) {
-			return {'status':false, 'imagePath':''};
+			return {'status':false}
 		}
 	}
 
 	async syncImages(data:object){
 		console.log('eta pugyo')
+		new Notice('syncing image');
 		try {
 			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
 			let fileUrl = '';
@@ -123,11 +124,16 @@ class OnlyEverApi {
 							"Notes sync failed. Please ensure you have correct plugin token in the settings."
 						);
 					}
+				}).catch((err)=>{
+					new Notice('Unable to sync file images');
+					new Notice(err);
 				})
 
 			return fileUrl;
 		}catch (e){
 			console.log(e)
+			new Notice('syncing image failed');
+			new Notice(e);
 		}
 	}
 }

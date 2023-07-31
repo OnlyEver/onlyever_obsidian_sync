@@ -6,8 +6,8 @@
 	"scripts": {
 		"dev": "webpack --mode development --watch",
 		"dev2": "node esbuild.config.mjs",
-		"build": "NODE_ENV=production webpack",
-		"build2": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"build2": "NODE_ENV=production webpack",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"prepare": "husky install",
 		"lint": "eslint . --ext .ts",

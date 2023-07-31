@@ -44,7 +44,6 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 							const result:any =
 								await this.onlyEverApi.validateApiToken(value);
 							this.plugin.settings.tokenValidity = result["status"];
-							this.plugin.settings.imagePath = result["imagePath"];
 
 							if (result["status"]) {
 								validityElement.setIcon("checkIcon");

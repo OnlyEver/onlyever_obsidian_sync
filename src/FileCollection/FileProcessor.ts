@@ -7,11 +7,10 @@ class FileProcessor {
 	fileParser: FileParser;
 	onlyEverApi: OnlyEverApi;
 	apiToken: string;
-	imagePath: string;
 
-	constructor(app: App, apiToken: string, imagePath:string) {
+	constructor(app: App, apiToken: string) {
 		this.app = app;
-		this.fileParser = new FileParser(app,imagePath);
+		this.fileParser = new FileParser(app);
 		this.apiToken = apiToken;
 		this.onlyEverApi = new OnlyEverApi(apiToken);
 	}
