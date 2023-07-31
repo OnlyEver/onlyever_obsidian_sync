@@ -120,15 +120,15 @@ class FileParser {
 			apiToken
 		);
 
+		const {result, headings} = this.parseMarkdownHeaders(contentsWithoutFlag)
+		console.log(result, headings);
 		return {
 			title: file.basename,
 			slug: `ob-${file.stat.ctime}`,
-			content: JSON.stringify(
-				this.parseMarkdownHeaders(contentsWithoutFlag)
-			),
+			content: JSON.stringify(result),
 			source_type: "obsidian",
 			description: "Obsidian vault",
-			heading: this.parseHeadings(file),
+			heading: headings,
 			ctime: new Date(file.stat.ctime),
 			mtime: new Date(file.stat.mtime),
 			user_list: []
@@ -145,6 +145,7 @@ class FileParser {
 	parseMarkdownHeaders(content: string) {
 		const lines = content.split("\n");
 		const result: ObsidianSourceList[] = [];
+		const headings:string[]  = []
 		let currentHeader = "";
 		let currentContent = "";
 		let isH1 = false;
@@ -163,7 +164,7 @@ class FileParser {
 				const headerLevel = matchHeader[1].length;
 				const headerContent = matchHeader[2];
 
-				if (currentHeader !== "") {
+				if (currentHeader !== "" || currentHeader !== null) {
 					result.push({
 						title: currentHeader.trim(),
 						content: currentContent.trim(),
@@ -174,6 +175,10 @@ class FileParser {
 				currentHeader = headerContent;
 				currentContent = "";
 				isH1 = headerLevel === 1
+
+				if(isH1){
+					headings.push(currentHeader.trim());
+				}
 			}else{
 				currentContent += line + "\n";
 			}
@@ -191,7 +196,7 @@ class FileParser {
 			result.splice(0, 1);
 		}
 
-		return result;
+		return {result, headings};
 	}
 
 	/**
