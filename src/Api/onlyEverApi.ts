@@ -101,13 +101,18 @@ class OnlyEverApi {
 		}
 	}
 
+	/**
+	 * Sync file images
+	 * 
+	 * @param data
+	 *  
+	 * @returns  
+	 */
 	async syncImages(data:object){
-		console.log('eta pugyo')
-		new Notice('syncing image');
 		try {
 			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
-			let fileUrl = '';
-				axios({
+
+			return axios({
 					method: "post",
 					url: endpoint,
 					headers: {
@@ -118,22 +123,19 @@ class OnlyEverApi {
 					if ((res?.data as ApiData).success) {
 						new Notice(`Synced file successfully`, 400);
 
-						fileUrl = res.data.filePath;
+						return res.data.filePath;
 					} else {
 						new Notice(
 							"Notes sync failed. Please ensure you have correct plugin token in the settings."
 						);
 					}
+
+					return;
 				}).catch((err)=>{
 					new Notice('Unable to sync file images');
-					new Notice(err);
 				})
-
-			return fileUrl;
 		}catch (e){
-			console.log(e)
-			new Notice('syncing image failed');
-			new Notice(e);
+			new Notice('Syncing image failed');
 		}
 	}
 }
