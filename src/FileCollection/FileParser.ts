@@ -108,20 +108,22 @@ class FileParser {
 	 * Parse to source list object format.
 	 *
 	 * @param file TFile
+	 * @param parent
+	 * @param apiToken
 	 *
 	 * @returns Promise<object>
 	 */
-	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
-		let contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
+	async parseToJson(file: TFile, parent: null | TFolder, apiToken:null|string): Promise<object> {
+		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
-		contentsWithoutFlag = await this.parseInternalLinks(
+		const [parsedContent, allLinks] = await this.parseInternalLinks(
 			contentsWithoutFlag,
 			parent,
 			apiToken
 		);
 
 		const {result, headings} = this.parseMarkdownHeaders(contentsWithoutFlag)
-		console.log(result, headings);
+
 		return {
 			title: file.basename,
 			slug: `ob-${file.stat.ctime}`,
@@ -131,7 +133,8 @@ class FileParser {
 			heading: headings,
 			ctime: new Date(file.stat.ctime),
 			mtime: new Date(file.stat.mtime),
-			user_list: []
+			user_list: [],
+			outgoing_links: allLinks
 		};
 	}
 
@@ -200,29 +203,23 @@ class FileParser {
 	}
 
 	/**
-	 * Update the internal links related to wiki and YouTube with [alias|link|] format
+	 * Update the internal links related to wiki, YouTube and obsidian with [title|alias|index|source] format
 	 *
 	 * @param content
+	 * @param parent
+	 * @param apiToken
 	 *
-	 * @returns string
+	 * @returns [string, string[]]
 	 */
-	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string): Promise<string> {
+	async parseInternalLinks(content: string, parent: null | TFolder , apiToken: null | string): Promise<[string, string[]]> {
 		const siblingObj: { [key: string]: Stat } = {};
-		const wikiMarkdownLink = new RegExp(
-			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/([\w]+)\.wikipedia.org\/wiki\/(.*?))\))/gi
-		);
-		const youtubeMarkdownLink = new RegExp(
-			/(?=\[(!\[.+?\]\(.+?\)|.+?)]\((https:\/\/([\w]+)\.youtube.com\/watch\?v=(.*?)&[^)]+)\))/gi
-		);
 
-		const wikiLink =
-			/(?<!\()https:\/\/([\w]+)\.wikipedia.org\/wiki\/([^\s]+)/gi;
-		const youtubeLink =
-			/(?<!\()https:\/\/([\w]+)\.youtube.com\/watch\?v=([^\s]+)&[^\s)]+/gi;
-
-		const internalLink = /(?<!!)\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
+		const allLinks = [];
+		const linkRegex = /\[(.*?)\]\((https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\)|\[\[(.*?)\]\]|\b(https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\b/g;
 		const internalImageLink = /\!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
 
+		let match;
+		let index = 0;
 
 		if (parent?.children) {
 			for (const sibling of Object.values(parent?.children)) {
@@ -233,7 +230,6 @@ class FileParser {
 			}
 		}
 
-
 		if (parent?.children) {
 			for (const sibling of Object.values(parent?.children)) {
 				siblingObj[sibling.name] = {
@@ -243,15 +239,6 @@ class FileParser {
 			}
 		}
 
-		const internalMarkDownLink = await Promise.all(
-			[...content.matchAll(internalLink)].map(async (m) => ({
-				originalAlias: m[2] ? `[[${m[1]}|${m[2]}]]` : `[[${m[1]}]]`,
-				newAlias: m[2]
-					? `[[${m[2]}| |ob-${await this.getFileCtime(m[1], siblingObj)}]]`
-					: `[[${m[1]}| |ob-${await this.getFileCtime(m[1], siblingObj)}]]`,
-			}))
-		);
-
 		const internalImageMarkDownLink = await Promise.all(
 			[...content.matchAll(internalImageLink)].map(async (m) => ({
 				originalAlias: `![[${m[1]}]]`, internalImageLink,
@@ -259,24 +246,55 @@ class FileParser {
 			}))
 		);
 
-		const markDownlinks = [
-			...content.matchAll(wikiMarkdownLink),
-			...content.matchAll(youtubeMarkdownLink),
-		].map((m) => ({
-			originalAlias: `[${m[1]}](${m[2]})`,
-			newAlias: `[[${m[1]}|${m[2]}|${m[4]}]]`,
-		}));
-
-
-		content = content.replace(wikiLink, "[[$&|$&|$2]]");
-		content = content.replace(youtubeLink, "[[$&|$&|$2]]");
-
-		for (const replacement of [...internalMarkDownLink, ...markDownlinks, ...internalImageMarkDownLink]) {
+		for (const replacement of [...internalImageMarkDownLink]) {
 			const { originalAlias, newAlias } = replacement;
 			content = content.replace(originalAlias, newAlias);
 		}
 
-		return content;
+		while ((match = linkRegex.exec(content)) !== null) {
+			const url = match[2] || match[4] || '';
+			let alias = match[1] || match[3] || url;
+
+			let source = '';
+			let title = '';
+			let customLink ='';
+
+			index = allLinks.length;
+
+			if (url) {
+				if (url.includes('wikipedia.org')) {
+					source = 'wikipedia';
+					title = (url.split('/')).pop()??'';
+				} else if (url.includes('youtube.com')) {
+					source = 'youtube';
+					const videoId = url.match(/v=([^&]+)/);
+					title = videoId ? videoId[1] : '';
+				}
+
+				allLinks.push(url);
+				customLink = `[[${title}|${alias}|${index}|${source}]]`;
+			} else {
+				source = 'obsidian';
+				let filePath = match[3];
+				alias = filePath;
+
+				if (filePath.includes('|')) {
+					const splitValues =  filePath.split('|');
+					filePath = splitValues[0];
+					alias = splitValues[1];
+				}
+
+				const objectId = `ob-${await this.getFileCtime(filePath, siblingObj)}`;
+
+				allLinks.push(objectId)
+				title = objectId
+			}
+
+			customLink = `[[${title}|${alias}|${index}|${source}]]`;
+			content = content.replace(match[0], customLink);
+		}
+
+		return [content, allLinks];
 	}
 
 	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }, apiToken: null | string) {
