@@ -122,7 +122,7 @@ class FileParser {
 			apiToken
 		);
 
-		const {result, headings} = this.parseMarkdownHeaders(contentsWithoutFlag)
+		const {result, headings} = this.parseMarkdownHeaders(parsedContent)
 
 		return {
 			title: file.basename,
