@@ -117,13 +117,13 @@ class FileParser {
 	async parseToJson(file: TFile, parent: null | TFolder, apiToken:null|string): Promise<object> {
 		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
-		const [parsedContent, allLinks] = await this.parseInternalLinks(
+		const {content, outgoingLinks} = await this.parseInternalLinks(
 			contentsWithoutFlag,
 			parent,
 			apiToken
 		);
 
-		const {result, headings} = this.parseMarkdownHeaders(parsedContent)
+		const {result, headings} = this.parseMarkdownHeaders(content)
 
 		return {
 			title: file.basename,
@@ -135,7 +135,7 @@ class FileParser {
 			ctime: new Date(file.stat.ctime),
 			mtime: new Date(file.stat.mtime),
 			user_list: [],
-			outgoing_links: allLinks
+			outgoing_links: outgoingLinks
 		};
 	}
 
@@ -210,17 +210,17 @@ class FileParser {
 	 * @param parent
 	 * @param apiToken
 	 *
-	 * @returns [string, string[]]
 	 */
-	async parseInternalLinks(content: string, parent: null | TFolder , apiToken: null | string): Promise<[string, string[]]> {
+	async parseInternalLinks(content: string, parent: null | TFolder , apiToken: null | string): Promise<{content:string, outgoingLinks:string[]}> {
 		const siblingObj: { [key: string]: Stat } = {};
-
-		const allLinks = [];
 		const linkRegex = /\[(.*?)\]\((https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\)|\[\[(.*?)\]\]|\b(https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\b/g;
 		const internalImageLink = /\!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
 
 		let match;
 		let index = 0;
+		const outgoingLinks: string[] = [];
+		const linksInMdFile: string[] = [];
+		const oeCustomLinks: string[] = [];
 
 		if (parent?.children) {
 			for (const sibling of Object.values(parent?.children)) {
@@ -244,32 +244,23 @@ class FileParser {
 		}
 
 		while ((match = linkRegex.exec(content)) !== null) {
-			const url = match[2] || match[4] || '';
-			let alias = match[1] || match[3] || url;
+			let url, alias, title, source ;
+			const urlWithOrWithoutAliasInMdFile = match[0];
 
-			let source = '';
-			let title = '';
-			let customLink ='';
-
-			index = allLinks.length;
-
-			if (url) {
-				if (url.includes('wikipedia.org')) {
-					source = 'wikipedia';
-					title = (url.split('/')).pop()??'';
-				} else if (url.includes('youtube.com')) {
-					source = 'youtube';
-					const videoId = url.match(/v=([^&]+)/);
-					title = videoId ? videoId[1] : '';
-				}
-
-				allLinks.push(url);
-				customLink = `[[${title}|${alias}|${index}|${source}]]`;
-			} else {
-				source = 'obsidian';
+			if(urlWithOrWithoutAliasInMdFile.includes('wikipedia.org') || urlWithOrWithoutAliasInMdFile.includes('youtube.com')){
+				source = urlWithOrWithoutAliasInMdFile.includes('wikipedia.org') ? 'wikipedia' : 'youtube';
+				url    = match[2] || match[4] || '';
+				alias  = match[1] || match[3] || url;
+				title  = source === 'wikipedia'? this.getTitleForWikipedia(url): this.getTitleForYoutube(url);
+			} else{
 				let filePath = match[3];
 				alias = filePath;
 
+				/*
+				 * In-case there exists 2 notes with same name where one of them is inside a sibling folder:
+				 * (root/TestFile.md, root/SiblingFolder/TestFile.md)
+				 *
+				 */
 				if (filePath.includes('|')) {
 					const splitValues =  filePath.split('|');
 					filePath = splitValues[0];
@@ -277,16 +268,22 @@ class FileParser {
 				}
 
 				const objectId = `ob-${await this.getFileCtime(filePath, siblingObj)}`;
-
-				allLinks.push(objectId)
-				title = objectId
+				url    = objectId;
+				title  = objectId;
+				source = 'obsidian';
 			}
 
-			customLink = `[[${title}|${alias}|${index}|${source}]]`;
-			content = content.replace(match[0], customLink);
+			outgoingLinks.push(url);
+			linksInMdFile.push(urlWithOrWithoutAliasInMdFile);
+			oeCustomLinks.push(`[[${title}|${alias}|${index}|${source}]]`);
+			index = outgoingLinks.length;
 		}
 
-		return [content, allLinks];
+		for(let i=0; i< index; i++){
+			content = content.replace(linksInMdFile[i], oeCustomLinks[i]);
+		}
+
+		return {content, outgoingLinks};
 	}
 
 	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }, apiToken: null | string) {
@@ -390,6 +387,22 @@ class FileParser {
 		} catch (e) {
 			return false;
 		}
+	}
+
+
+	/*
+	 * Return title for wikipedia from url.
+	 */
+	getTitleForWikipedia(url:string): string{
+		return <string>(url.split('/')).pop();
+	}
+
+	/*
+	 * Return title for YouTube from url.
+	 */
+	getTitleForYoutube(url:string): string{
+		const videoId = url.match(/v=([^&]+)/);
+		return videoId ? videoId[1]: '';
 	}
 }
 
