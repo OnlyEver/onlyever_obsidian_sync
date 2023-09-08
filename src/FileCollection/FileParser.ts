@@ -1,5 +1,6 @@
 import { App, TFile, TFolder, arrayBufferToBase64 } from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
+import * as repl from "repl";
 
 interface ObsidianSourceList {
 	title: string;
@@ -279,9 +280,7 @@ class FileParser {
 			index = outgoingLinks.length;
 		}
 
-		for(let i=0; i< index; i++){
-			content = content.replace(linksInMdFile[i], oeCustomLinks[i]);
-		}
+		content = this.replaceLinksInMdWithOeCustomLink(content, linksInMdFile, oeCustomLinks);
 
 		return {content, outgoingLinks};
 	}
@@ -403,6 +402,32 @@ class FileParser {
 	getTitleForYoutube(url:string): string{
 		const videoId = url.match(/v=([^&]+)/);
 		return videoId ? videoId[1]: '';
+	}
+
+	/**
+	 * Replaces MdFile's formatted link with custom formatted links
+	 *
+	 * @params string content
+	 * @params string[] linksInMdFile
+	 * @params string[] oeCustomLinks
+	 *
+	 * @returns string
+	 */
+	replaceLinksInMdWithOeCustomLink(content: string, linksInMdFile: string[], oeCustomLinks: string[]): string{
+		const size = linksInMdFile.length;
+		const fragmentedContent = [];
+
+		for(let i = 0; i<size;i++){
+			const startIndexOfLinkInContent = content.indexOf(linksInMdFile[i]);
+			const lengthOfLinkInContent     = linksInMdFile[i].length;
+			const endIndexOfLinkInContent   = startIndexOfLinkInContent + lengthOfLinkInContent - 1;
+			const parentSubstring  			= content.substring(0, endIndexOfLinkInContent+2);
+
+			fragmentedContent.push(parentSubstring.replace(linksInMdFile[i], oeCustomLinks[i]));
+			content =  content.slice(endIndexOfLinkInContent+2);
+		}
+
+		return fragmentedContent.join('');
 	}
 }
 
