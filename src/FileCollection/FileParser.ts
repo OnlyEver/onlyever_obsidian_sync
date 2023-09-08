@@ -89,7 +89,8 @@ class FileParser {
 	}
 
 	/**
-	 * Checks if file has markForSyncFlag in it or not.
+	 * Checks if file has oe_sync property in it or not.
+	 *
 	 * @param file TFile
 	 *
 	 * @returns boolean
@@ -230,15 +231,6 @@ class FileParser {
 			}
 		}
 
-		if (parent?.children) {
-			for (const sibling of Object.values(parent?.children)) {
-				siblingObj[sibling.name] = {
-					stat: (sibling as TFile).stat,
-					path: parent?.path,
-				};
-			}
-		}
-
 		const internalImageMarkDownLink = await Promise.all(
 			[...content.matchAll(internalImageLink)].map(async (m) => ({
 				originalAlias: `![[${m[1]}]]`, internalImageLink,
@@ -342,7 +334,6 @@ class FileParser {
 
 	/***
 	 * Returns ctime of file based on file path
-	 *
 	 *
 	 * @return Promise<string>
 	 *
