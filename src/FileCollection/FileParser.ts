@@ -1,6 +1,5 @@
 import { App, TFile, TFolder, arrayBufferToBase64 } from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
-import * as repl from "repl";
 
 interface ObsidianSourceList {
 	title: string;
@@ -420,12 +419,20 @@ class FileParser {
 		for(let i = 0; i<size;i++){
 			const startIndexOfLinkInContent = content.indexOf(linksInMdFile[i]);
 			const lengthOfLinkInContent     = linksInMdFile[i].length;
-			const endIndexOfLinkInContent   = startIndexOfLinkInContent + lengthOfLinkInContent - 1;
-			const parentSubstring  			= content.substring(0, endIndexOfLinkInContent+2);
+			const endIndexOfLinkInContent   = startIndexOfLinkInContent + lengthOfLinkInContent;
+			const parentSubstring  			= content.substring(0, endIndexOfLinkInContent);
 
 			fragmentedContent.push(parentSubstring.replace(linksInMdFile[i], oeCustomLinks[i]));
-			content =  content.slice(endIndexOfLinkInContent+2);
+			content =  content.slice(endIndexOfLinkInContent);
 		}
+
+		/**
+		 * Pushing var content to fragmentedContent because:
+		 * - var content has continiously been sliced and updated to contain contents after end index of each link,
+		 * - meaning at the end of the loop, it contains remaining string contents without any links,
+		 * - by pushing it, we ensure that var fragmentedContent actually has all the content.
+		 */
+		fragmentedContent.push(content);
 
 		return fragmentedContent.join('');
 	}
