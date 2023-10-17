@@ -1,10 +1,11 @@
-import { App, TFile, TFolder, arrayBufferToBase64 } from "obsidian";
+import {App, TFile, TFolder, arrayBufferToBase64} from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
 
-interface ObsidianSourceList {
-	title: string;
+interface OeSection {
+	title: string
 	content: string;
-	isH1: boolean;
+	heading_level: number;
+	children: OeSection[]
 }
 
 interface Stat {
@@ -114,7 +115,7 @@ class FileParser {
 	 *
 	 * @returns Promise<object>
 	 */
-	async parseToJson(file: TFile, parent: null | TFolder, apiToken:null|string): Promise<object> {
+	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
 		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
 		const {content, outgoingLinks} = await this.parseInternalLinks(
@@ -123,15 +124,15 @@ class FileParser {
 			apiToken
 		);
 
-		const {result, headings} = this.parseMarkdownHeaders(content)
+		const {listOfSection, listOfH1} = this.parseMarkdownContentToOeJsonStructure(content);
 
 		return {
 			title: file.basename,
 			slug: `ob-${file.stat.ctime}`,
-			content: JSON.stringify(result),
+			content: JSON.stringify(listOfSection),
 			source_type: "obsidian",
 			description: "Obsidian vault",
-			heading: headings,
+			heading: listOfH1,
 			ctime: new Date(file.stat.ctime),
 			mtime: new Date(file.stat.mtime),
 			user_list: [],
@@ -142,65 +143,114 @@ class FileParser {
 	/**
 	 * Returns array of object after parsing to our format.
 	 *
-	 * @param content string
+	 * IMPORTANT: Read code comments slow and carefully
 	 *
-	 * @returns Promise<object>
+	 * @param markdownAsString string
+	 *
+	 * @returns {OeSection[], string[]}
 	 */
-	parseMarkdownHeaders(content: string) {
-		const lines = content.split("\n");
-		const result: ObsidianSourceList[] = [];
-		const headings:string[]  = []
-		let currentHeader = "";
-		let currentContent = "";
-		let isH1 = false;
-		let insideCodeTag = false;
+	parseMarkdownContentToOeJsonStructure(markdownAsString: string): { listOfSection: OeSection[]; listOfH1: string[] } {
+		// listOfH1 is the final list of h1 ordered headings
+		const listOfH1: string[] = []
 
-		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i];
-			const matchHeader = line.match(/^(#+)\s+(.*)$/);
-			const matchStartBlock = line.match(/^~~~.*$|^```.*$/);
+		// listOfSection is the final list that we return
+		const listOfSection: OeSection[] = [];
 
-			if(matchStartBlock){
-				insideCodeTag=!insideCodeTag;
+		// stack is kinda like a temporary listOfSection that maintains sections withing the hierarchy.
+		const stack: OeSection[] = [];
+
+		// Current section is just previously iterated section.
+		// It is basically the active session's parent section, if the active session's heading order is smaller than active session or if the active section is just simple content.
+		// This means that current section will be constantly updated to contain md contents within its hierarchy level
+		let currentSection: OeSection | null = null
+
+		let initialContent = '';
+		let insideCodeBlock = false;
+
+		const lines = markdownAsString.split('\n');
+
+		for (const line of lines) {
+			const headingMatch = line.match(/^(#+) (.+)$/);
+			const codeBlockMatch = line.match(/^~~~.*$|^```.*$/);
+
+			if (codeBlockMatch) {
+				insideCodeBlock = !insideCodeBlock;
 			}
 
-			if(!insideCodeTag && matchHeader){
-				const headerLevel = matchHeader[1].length;
-				const headerContent = matchHeader[2];
-
-				if (currentHeader !== "" || currentHeader !== null) {
-					result.push({
-						title: currentHeader.trim(),
-						content: currentContent.trim(),
-						isH1: isH1,
-					});
+			if (insideCodeBlock) {
+				// This means we are iterating inside a code block
+				// So we would not want to treat '# something' as a heading
+				if (currentSection) {
+					currentSection.content += line + '\n';
 				}
+			} else {
+				if (headingMatch) {
+					// Inside the 'if condition', if the line is a heading.
 
-				currentHeader = headerContent;
-				currentContent = "";
-				isH1 = headerLevel === 1
+					// Code looks weird but headingMatch is an array that basically contains: [ # complete title, #, title];.
+					// So we're just voiding the 0 index and assigning the remaining 2 indexes to hashes and title.
+					const [, hashes, title] = headingMatch;
+					const heading_level = hashes.length - 1;
 
-				if(isH1){
-					headings.push(currentHeader.trim());
+					if(heading_level === 0){
+						// Maintaining a list of H1s
+						listOfH1.push(title);
+					}
+
+					// We need an active section for each iteration.
+					const section: OeSection = {
+						title,
+						content: '',
+						heading_level,
+						children: [],
+					};
+
+					// This is for when we find heading of higher order than current section's heading order
+					// We need to clear the stack until the heading order is equal to or higher
+					while (stack.length > 0 && heading_level <= stack[stack.length - 1].heading_level) {
+						stack.pop();
+					}
+
+					if (stack.length === 0) {
+						// The stack is usually only sized 0 when there's initial paragraph(s) .i.e content before we see heading of any order
+						if (initialContent !== '') {
+							listOfSection.push({
+								title: '',
+								content: initialContent,
+								heading_level: 99,
+								children: [],
+							});
+							initialContent = '';
+						}
+						listOfSection.push(section);
+					} else {
+						// This is the normal-est flow in this whole thing.
+						// We push active section to stack.
+						stack[stack.length - 1].children.push(section);
+					}
+
+					stack.push(section);
+					// Since the top level if condition of this block indicates that we've detected a new heading,
+					// This means hami are about to go to another hierarchy
+					// That is why we need to update current section to active section
+					// (Read this statement relatively to this iteration) :
+					// So that in the next iteration, content are filled in this section rather than the previous section.
+					currentSection = section;
+				} else {
+					// We're dealing with normal content.
+					if (currentSection) {
+						// We're dealing with content that falls under a heading of any order
+						currentSection.content += line + '\n';
+					} else if (line.trim() !== '') {
+						// We're dealing with content that is does not fall under any heading.
+						// Usually this is the case for when there's a paragraph before any heading in the note.
+						initialContent += line + '\n';
+					}
 				}
-			}else{
-				currentContent += line + "\n";
 			}
 		}
 
-		if (currentHeader !== "" || currentHeader !== null) {
-			result.push({
-				title: currentHeader?.trim(),
-				content: currentContent.trim(),
-				isH1: isH1,
-			});
-		}
-
-		if (result[0] && result[0].content == "") {
-			result.splice(0, 1);
-		}
-
-		return {result, headings};
+		return {listOfSection, listOfH1};
 	}
 
 	/**
@@ -211,7 +261,10 @@ class FileParser {
 	 * @param apiToken
 	 *
 	 */
-	async parseInternalLinks(content: string, parent: null | TFolder , apiToken: null | string): Promise<{content:string, outgoingLinks:string[]}> {
+	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string): Promise<{
+		content: string,
+		outgoingLinks: string[]
+	}> {
 		const siblingObj: { [key: string]: Stat } = {};
 		const linkRegex = /\[(.*?)\]\((https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\)|\[\[(.*?)\]\]|\b(https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\b/g;
 		const internalImageLink = /\!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
@@ -239,20 +292,20 @@ class FileParser {
 		);
 
 		for (const replacement of [...internalImageMarkDownLink]) {
-			const { originalAlias, newAlias } = replacement;
+			const {originalAlias, newAlias} = replacement;
 			content = content.replace(originalAlias, newAlias);
 		}
 
 		while ((match = linkRegex.exec(content)) !== null) {
-			let url, alias, title, source ;
+			let url, alias, title, source;
 			const urlWithOrWithoutAliasInMdFile = match[0];
 
-			if(urlWithOrWithoutAliasInMdFile.includes('wikipedia.org') || urlWithOrWithoutAliasInMdFile.includes('youtube.com')){
+			if (urlWithOrWithoutAliasInMdFile.includes('wikipedia.org') || urlWithOrWithoutAliasInMdFile.includes('youtube.com')) {
 				source = urlWithOrWithoutAliasInMdFile.includes('wikipedia.org') ? 'wikipedia' : 'youtube';
-				url    = match[2] || match[4] || '';
-				alias  = match[1] || match[3] || url;
-				title  = source === 'wikipedia'? this.getTitleForWikipedia(url): this.getTitleForYoutube(url);
-			} else{
+				url = match[2] || match[4] || '';
+				alias = match[1] || match[3] || url;
+				title = source === 'wikipedia' ? this.getTitleForWikipedia(url) : this.getTitleForYoutube(url);
+			} else {
 				let filePath = match[3];
 				alias = filePath;
 
@@ -262,14 +315,14 @@ class FileParser {
 				 *
 				 */
 				if (filePath.includes('|')) {
-					const splitValues =  filePath.split('|');
+					const splitValues = filePath.split('|');
 					filePath = splitValues[0];
 					alias = splitValues[1];
 				}
 
 				const objectId = `ob-${await this.getFileCtime(filePath, siblingObj)}`;
-				url    = objectId;
-				title  = objectId;
+				url = objectId;
+				title = objectId;
 				source = 'obsidian';
 			}
 
@@ -307,11 +360,11 @@ class FileParser {
 
 	async uploadFile(file: TFile, apiToken: null | string) {
 		try {
-			if(apiToken){
-				const onlyEverApi =  new OnlyEverApi(apiToken)
+			if (apiToken) {
+				const onlyEverApi = new OnlyEverApi(apiToken)
 				const content = await this.app.vault.readBinary(file);
 				const base64 = arrayBufferToBase64(content);
-				const filePath = file.path.replace(/ /g,'+');
+				const filePath = file.path.replace(/ /g, '+');
 
 				const input = {
 					Body: base64,
@@ -323,7 +376,7 @@ class FileParser {
 				return await onlyEverApi.syncImages(input);
 			}
 		} catch (err) {
-			console.log('error',err);
+			console.log('error', err);
 		}
 	}
 
@@ -337,7 +390,7 @@ class FileParser {
 	 */
 	async getFileCtime(filePath: string, sibling: { [key: string]: Stat }) {
 		const fileName = `${filePath}.md`;
-		const files:TFile[] = await this.app.vault.getFiles();
+		const files: TFile[] = await this.app.vault.getFiles();
 
 		if (Object.keys(sibling).contains(fileName)) {
 			return sibling[fileName]["stat"]["ctime"];
@@ -345,9 +398,9 @@ class FileParser {
 
 		const stat = await this.app.vault.adapter.stat(fileName);
 
-		if(!stat && fileName){
+		if (!stat && fileName) {
 			for (const file of files) {
-				if (file.path && file?.path === filePath || file.name===fileName) {
+				if (file.path && file?.path === filePath || file.name === fileName) {
 					return file?.stat.ctime;
 				}
 			}
@@ -391,16 +444,16 @@ class FileParser {
 	/*
 	 * Return title for wikipedia from url.
 	 */
-	getTitleForWikipedia(url:string): string{
+	getTitleForWikipedia(url: string): string {
 		return <string>(url.split('/')).pop();
 	}
 
 	/*
 	 * Return title for YouTube from url.
 	 */
-	getTitleForYoutube(url:string): string{
+	getTitleForYoutube(url: string): string {
 		const videoId = url.match(/v=([^&]+)/);
-		return videoId ? videoId[1]: '';
+		return videoId ? videoId[1] : '';
 	}
 
 	/**
@@ -412,18 +465,18 @@ class FileParser {
 	 *
 	 * @returns string
 	 */
-	replaceLinksInMdWithOeCustomLink(content: string, linksInMdFile: string[], oeCustomLinks: string[]): string{
+	replaceLinksInMdWithOeCustomLink(content: string, linksInMdFile: string[], oeCustomLinks: string[]): string {
 		const size = linksInMdFile.length;
 		const fragmentedContent = [];
 
-		for(let i = 0; i<size;i++){
+		for (let i = 0; i < size; i++) {
 			const startIndexOfLinkInContent = content.indexOf(linksInMdFile[i]);
-			const lengthOfLinkInContent     = linksInMdFile[i].length;
-			const endIndexOfLinkInContent   = startIndexOfLinkInContent + lengthOfLinkInContent;
-			const parentSubstring  			= content.substring(0, endIndexOfLinkInContent);
+			const lengthOfLinkInContent = linksInMdFile[i].length;
+			const endIndexOfLinkInContent = startIndexOfLinkInContent + lengthOfLinkInContent;
+			const parentSubstring = content.substring(0, endIndexOfLinkInContent);
 
 			fragmentedContent.push(parentSubstring.replace(linksInMdFile[i], oeCustomLinks[i]));
-			content =  content.slice(endIndexOfLinkInContent);
+			content = content.slice(endIndexOfLinkInContent);
 		}
 
 		/**
@@ -438,4 +491,4 @@ class FileParser {
 	}
 }
 
-export { FileParser };
+export {FileParser};
