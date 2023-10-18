@@ -133,9 +133,6 @@ class FileParser {
 			source_type: "obsidian",
 			description: "Obsidian vault",
 			heading: listOfH1,
-			ctime: new Date(file.stat.ctime),
-			mtime: new Date(file.stat.mtime),
-			user_list: [],
 			outgoing_links: outgoingLinks
 		};
 	}
