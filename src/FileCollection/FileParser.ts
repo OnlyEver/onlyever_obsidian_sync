@@ -126,7 +126,6 @@ class FileParser {
 
 		const {listOfSection, listOfH1} = this.parseMarkdownContentToOeJsonStructure(content);
 
-		console.log(listOfSection);
 		return {
 			title: file.basename,
 			slug: `ob-${file.stat.ctime}`,
@@ -184,7 +183,6 @@ class FileParser {
 					initialContent =  initialContent + line + '\n';
 				}
 			} else {
-				console.log('eta ta aaudina hola')
 				if (headingMatch) {
 					// Inside the 'if condition', if the line is a heading.
 
@@ -250,6 +248,7 @@ class FileParser {
 				}
 			}
 		}
+
 		if(initialContent){
 			const initialSection: OeSection = {
 				title: '',
