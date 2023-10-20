@@ -126,6 +126,7 @@ class FileParser {
 
 		const {listOfSection, listOfH1} = this.parseMarkdownContentToOeJsonStructure(content);
 
+		console.log(listOfSection);
 		return {
 			title: file.basename,
 			slug: `ob-${file.stat.ctime}`,
@@ -179,8 +180,11 @@ class FileParser {
 				// So we would not want to treat '# something' as a heading
 				if (currentSection) {
 					currentSection.content += line + '\n';
+				}else{
+					initialContent =  initialContent + line + '\n';
 				}
 			} else {
+				console.log('eta ta aaudina hola')
 				if (headingMatch) {
 					// Inside the 'if condition', if the line is a heading.
 
@@ -228,7 +232,7 @@ class FileParser {
 
 					stack.push(section);
 					// Since the top level if condition of this block indicates that we've detected a new heading,
-					// This means hami are about to go to another hierarchy
+					// This means we are about to go to another hierarchy
 					// That is why we need to update current section to active section
 					// (Read this statement relatively to this iteration) :
 					// So that in the next iteration, content are filled in this section rather than the previous section.
@@ -245,6 +249,16 @@ class FileParser {
 					}
 				}
 			}
+		}
+		if(initialContent){
+			const initialSection: OeSection = {
+				title: '',
+				content: initialContent,
+				heading_level: 99,
+				children: []
+			}
+
+			listOfSection.push(initialSection)
 		}
 
 		return {listOfSection, listOfH1};
