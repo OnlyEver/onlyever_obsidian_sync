@@ -25,7 +25,7 @@ class OnlyEverApi {
 	 */
 	async syncFiles(files: object[]) {
 		try {
-			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
+			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
 
 			if (files.length > 0) {
 				axios({
@@ -69,8 +69,7 @@ class OnlyEverApi {
 	 */
 	async validateApiToken(token: string) {
 		try {
-			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/verifyToken?pluginName=obsidian&token=${token}`;
-
+			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/verifyToken?pluginName=obsidian&token=${token}`;
 			return axios({
 				method: "post",
 				url: endpoint,
@@ -103,14 +102,14 @@ class OnlyEverApi {
 
 	/**
 	 * Sync file images
-	 * 
+	 *
 	 * @param data
-	 *  
-	 * @returns  
+	 *
+	 * @returns
 	 */
 	async syncImages(data:object){
 		try {
-			const endpoint = `https://asia-south1.gcp.data.mongodb-api.com/app/only_ever_staging-mbvds/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
+			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
 
 			return axios({
 					method: "post",
