@@ -130,10 +130,13 @@ class FileParser {
 			title: file.basename,
 			slug: `ob-${file.stat.ctime}`,
 			content: JSON.stringify(listOfSection),
-			source_type: "obsidian",
 			description: "Obsidian vault",
 			heading: listOfH1,
-			outgoing_links: outgoingLinks
+			source_type: "text",
+			source_category: {
+				category: 'notes',
+				sub_category: 'obsidian'
+			}
 		};
 	}
 
@@ -491,7 +494,7 @@ class FileParser {
 
 		/**
 		 * Pushing var content to fragmentedContent because:
-		 * - var content has continiously been sliced and updated to contain contents after end index of each link,
+		 * - var content has continuously been sliced and updated to contain contents after end index of each link,
 		 * - meaning at the end of the loop, it contains remaining string contents without any links,
 		 * - by pushing it, we ensure that var fragmentedContent actually has all the content.
 		 */
