@@ -7,6 +7,10 @@ interface OeSection {
 	heading_level: number;
 	children: OeSection[]
 }
+interface OeInternalLink{
+	slug: string
+	id: string|null
+}
 
 interface Stat {
 	stat: {
@@ -118,7 +122,7 @@ class FileParser {
 	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
 		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
-		const {content, outgoingLinks} = await this.parseInternalLinks(
+		const {content, internalLinks} = await this.parseInternalLinks(
 			contentsWithoutFlag,
 			parent,
 			apiToken
@@ -133,7 +137,7 @@ class FileParser {
 			source_type: "obsidian",
 			description: "Obsidian vault",
 			heading: listOfH1,
-			outgoing_links: outgoingLinks
+			internal_links: internalLinks,
 		};
 	}
 
@@ -273,7 +277,7 @@ class FileParser {
 	 */
 	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string): Promise<{
 		content: string,
-		outgoingLinks: string[]
+		internalLinks: OeInternalLink[]
 	}> {
 		const siblingObj: { [key: string]: Stat } = {};
 		const linkRegex = /\[(.*?)\]\((https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\)|\[\[(.*?)\]\]|\b(https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\b/g;
@@ -281,7 +285,7 @@ class FileParser {
 
 		let match;
 		let index = 0;
-		const outgoingLinks: string[] = [];
+		const internalLinks: OeInternalLink[] = [];
 		const linksInMdFile: string[] = [];
 		const oeCustomLinks: string[] = [];
 
@@ -336,15 +340,15 @@ class FileParser {
 				source = 'obsidian';
 			}
 
-			outgoingLinks.push(url);
+			internalLinks.push( {id: null, slug: title} );
 			linksInMdFile.push(urlWithOrWithoutAliasInMdFile);
-			oeCustomLinks.push(`[[${title}|${alias}|${index}|${source}]]`);
-			index = outgoingLinks.length;
+			oeCustomLinks.push( `[[${title}|${alias}|${index}|${source}]]` );
+			index = internalLinks.length;
 		}
 
 		content = this.replaceLinksInMdWithOeCustomLink(content, linksInMdFile, oeCustomLinks);
 
-		return {content, outgoingLinks};
+		return {content, internalLinks};
 	}
 
 	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }, apiToken: null | string) {
@@ -491,7 +495,7 @@ class FileParser {
 
 		/**
 		 * Pushing var content to fragmentedContent because:
-		 * - var content has continiously been sliced and updated to contain contents after end index of each link,
+		 * - var content has continuously been sliced and updated to contain contents after end index of each link,
 		 * - meaning at the end of the loop, it contains remaining string contents without any links,
 		 * - by pushing it, we ensure that var fragmentedContent actually has all the content.
 		 */
