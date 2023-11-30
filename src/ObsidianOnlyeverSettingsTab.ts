@@ -1,12 +1,13 @@
 import {
-	App,
+	App, debounce,
 	ExtraButtonComponent,
 	PluginSettingTab,
 	Setting,
 	TextComponent,
 } from "obsidian";
-import { OnlyEverApi } from "./Api/onlyEverApi";
+import {OnlyEverApi} from "./Api/onlyEverApi";
 import MyPlugin from "../main";
+
 export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 	plugin: MyPlugin;
 	onlyEverApi: OnlyEverApi;
@@ -19,7 +20,7 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const { containerEl } = this;
+		const {containerEl} = this;
 
 		containerEl.empty();
 		containerEl.createEl("h2", {
@@ -28,6 +29,20 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 
 		let textElement: TextComponent;
 		let validityElement: ExtraButtonComponent;
+
+		const debouncedTokenVerification  = debounce((value: string)=>{
+			this.onlyEverApi.validateApiToken(value).then((result)=>{
+				if (result["status"]) {
+					validityElement.setIcon("checkIcon");
+					errorElement.innerText = "";
+				} else if (result["status"] === false) {
+					validityElement.setIcon("crossIcon");
+					errorElement.addClass("error");
+					errorElement.innerText = value.length > 0 ? "The PLUGIN TOKEN is incorrect." : "";
+				}
+			})
+		}, 1200, true)
+
 
 		new Setting(containerEl)
 			.setName("PLUGIN TOKEN")
@@ -41,27 +56,10 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 						this.plugin.settings.tokenValidity = null;
 
 						if (value.length && value != "") {
-							const result:any =
-								await this.onlyEverApi.validateApiToken(value);
-							this.plugin.settings.tokenValidity = result["status"];
-
-							if (result["status"]) {
-								validityElement.setIcon("checkIcon");
-								errorElement.innerText = "";
-							} else if (result["status"] === false) {
-								validityElement.setIcon("crossIcon");
-								errorElement.addClass("error");
-								errorElement.innerText =
-									value.length > 0
-										? "The PLUGIN TOKEN is incorrect."
-										: "";
-							}
+							debouncedTokenVerification(value)
 						}
 
-						if (
-							!text.getValue().length ||
-							text.getValue() === null
-						) {
+						if (!text.getValue().length || text.getValue() === null) {
 							errorElement.innerText = "";
 							validityElement.setIcon("circle-slash");
 						}
