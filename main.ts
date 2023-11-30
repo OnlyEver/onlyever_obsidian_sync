@@ -1,4 +1,4 @@
-import { Plugin, addIcon } from "obsidian";
+import {Plugin, addIcon, debounce} from "obsidian";
 import { FileManager as Manager } from "./src/FileCollection/FileManager";
 import { ObsidianOnlyeverSettingsTab } from "./src/ObsidianOnlyeverSettingsTab";
 // import * as dotenv from "dotenv";
@@ -79,11 +79,6 @@ export default class MyPlugin extends Plugin {
 			}
 		);
 		tickIconEl.addClass("my-plugin-ribbon-class");
-
-		// const ribbonIconEl = this.addRibbonIcon("cloud", "Sync Notes", () => {
-		// 	this.manager.fileProcessor.processFiles();
-		// });
-		// ribbonIconEl.addClass("my-plugin-ribbon-class");
 	}
 
 	private scanVault() {
@@ -114,6 +109,11 @@ export default class MyPlugin extends Plugin {
 	 * Registers event and functionality on event
 	 */
 	private registerAllEvents() {
+
+		const debouncedSync  = debounce(()=>{
+			this.manager.onActiveFileSaveAction().then()
+		}, 30000, true)
+
 		/*
 		 * Registers and handles initial Obsidian open event
 		 */
@@ -129,7 +129,7 @@ export default class MyPlugin extends Plugin {
 		 */
 		this.registerEvent(
 			this.app.vault.on("modify", () => {
-				this.manager.onActiveFileSaveAction().then();
+				debouncedSync()
 			})
 		);
 
