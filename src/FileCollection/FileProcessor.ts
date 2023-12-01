@@ -1,6 +1,6 @@
-import { App, Notice } from "obsidian";
-import { FileParser } from "./FileParser";
-import { OnlyEverApi } from "../Api/onlyEverApi";
+import {App, Notice, TAbstractFile, TFile} from "obsidian";
+import {FileParser} from "./FileParser";
+import {OnlyEverApi} from "../Api/onlyEverApi";
 
 class FileProcessor {
 	app: App;
@@ -41,8 +41,8 @@ class FileProcessor {
 	/*
 	 * Syncs active marked file in vault
 	 */
-	async processSingleFile() {
-		const file = this.app.workspace.getActiveFile();
+	async processSingleFile(file: null | TFile = null) {
+		file = file ?? this.app.workspace.getActiveFile()
 		const processedFiles: object[] = [];
 
 		if (!file) {
