@@ -1,7 +1,6 @@
-import {Plugin, addIcon, debounce} from "obsidian";
+import {Plugin, addIcon, debounce, TAbstractFile, TFile} from "obsidian";
 import { FileManager as Manager } from "./src/FileCollection/FileManager";
 import { ObsidianOnlyeverSettingsTab } from "./src/ObsidianOnlyeverSettingsTab";
-// import * as dotenv from "dotenv";
 
 interface ObsidianOnlyeverSettings {
 	apiToken: string;
@@ -110,8 +109,8 @@ export default class MyPlugin extends Plugin {
 	 */
 	private registerAllEvents() {
 
-		const debouncedSync  = debounce(()=>{
-			this.manager.onActiveFileSaveAction().then()
+		const debouncedSyncOnModify  = debounce((file: TAbstractFile)=>{
+			this.manager.fileProcessor.processSingleFile(file as TFile)
 		}, 30000, true)
 
 		/*
@@ -128,8 +127,8 @@ export default class MyPlugin extends Plugin {
 		 * Registers and handles active note edit event
 		 */
 		this.registerEvent(
-			this.app.vault.on("modify", () => {
-				debouncedSync()
+			this.app.vault.on("modify", (file) => {
+				debouncedSyncOnModify(file)
 			})
 		);
 
