@@ -41,7 +41,7 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 					errorElement.innerText = value.length > 0 ? "The PLUGIN TOKEN is incorrect." : "";
 				}
 			})
-		}, 1200, true)
+		}, 500, true)
 
 
 		new Setting(containerEl)
