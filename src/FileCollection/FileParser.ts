@@ -132,7 +132,6 @@ class FileParser {
 
 		return {
 			title: file.basename,
-			slug: `ob-${file.stat.ctime}`,
 			content: JSON.stringify(listOfSection),
 			description: "Obsidian vault",
 			heading: listOfH1,
@@ -408,7 +407,7 @@ class FileParser {
 	 */
 	async getFileCtime(filePath: string, sibling: { [key: string]: Stat }) {
 		const fileName = `${filePath}.md`;
-		const files: TFile[] = await this.app.vault.getFiles();
+		const files: TFile[] = this.app.vault.getFiles();
 
 		if (Object.keys(sibling).contains(fileName)) {
 			return sibling[fileName]["stat"]["ctime"];
