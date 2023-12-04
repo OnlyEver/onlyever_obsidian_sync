@@ -134,10 +134,14 @@ class FileParser {
 			title: file.basename,
 			slug: `ob-${file.stat.ctime}`,
 			content: JSON.stringify(listOfSection),
-			source_type: "obsidian",
 			description: "Obsidian vault",
 			heading: listOfH1,
 			internal_links: internalLinks,
+			source_type: "text",
+			source_category: {
+				category: 'notes',
+				sub_category: 'obsidian'
+			}
 		};
 	}
 
