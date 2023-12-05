@@ -196,9 +196,9 @@ class FileParser {
 					// Code looks weird but headingMatch is an array that basically contains: [ # complete title, #, title];.
 					// So we're just voiding the 0 index and assigning the remaining 2 indexes to hashes and title.
 					const [, hashes, title] = headingMatch;
-					const heading_level = hashes.length - 1;
+					const heading_level = hashes.length;
 
-					if(heading_level === 0){
+					if(heading_level === 1){
 						// Maintaining a list of H1s
 						listOfH1.push(title);
 					}
