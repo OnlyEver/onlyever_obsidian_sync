@@ -24,6 +24,7 @@ class OnlyEverApi {
 			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
 
 			if(files.length > 0){
+				console.log(files)
 				const res: AxiosResponse  =  await axios.post(endpoint, {
 					files: files,
 					canOverride: canOverwrite

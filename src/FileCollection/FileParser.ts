@@ -97,9 +97,10 @@ class FileParser {
 	 * @param parent
 	 * @param apiToken
 	 *
+	 * @param renameEvent
 	 * @returns Promise<object>
 	 */
-	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
+	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string, renameEvent=false): Promise<object> {
 		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
 		const {content, internalLinks} = await this.parseInternalLinks(
@@ -109,7 +110,6 @@ class FileParser {
 		);
 
 		const {listOfSection, listOfH1} = this.parseMarkdownContentToOeJsonStructure(content);
-
 
 		return {
 			title: file.basename,
@@ -125,8 +125,9 @@ class FileParser {
 			filePath: file.path,
 			fileCtime: file.stat.ctime,
 			// @ts-ignore
-			tempTitle: file.tempTitle ?? file.basename
+			...(renameEvent ? { tempTitle: file.tempTitle } : {})
 		};
+
 	}
 
 	/**

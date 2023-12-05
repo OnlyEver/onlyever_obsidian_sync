@@ -29,7 +29,7 @@ class FileProcessor {
 
 		for (const file of files) {
 			processedFiles.push(
-				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
+				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken, false)
 			);
 		}
 
@@ -39,7 +39,7 @@ class FileProcessor {
 	/*
 	 * Syncs active marked file in vault
 	 */
-	async processSingleFile(file: null | TFile = null) {
+	async processSingleFile(file: null | TFile = null, renameEvent = false) {
 		file = file ?? this.app.workspace.getActiveFile()
 		const processedFiles: object[] = [];
 
@@ -50,7 +50,7 @@ class FileProcessor {
 		}
 
 		if (await this.fileParser.fileHasSyncFlag(file)) {
-			processedFiles.push( await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken) );
+			processedFiles.push( await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken, renameEvent) );
 			
 			return await this.onlyEverApi.syncFiles(processedFiles);
 		}
