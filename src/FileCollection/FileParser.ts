@@ -24,6 +24,7 @@ interface Stat {
 
 class FileParser {
 	app: App;
+	imageUrls: any[] = [];
 
 	//This is for filtering.
 	markForSyncFlag = "oe_sync";
@@ -132,6 +133,7 @@ class FileParser {
 
 		return {
 			title: file.basename,
+			banner_image: this.imageUrls.length > 0 ? this.imageUrls[0] : '',
 			slug: `ob-${file.stat.ctime}`,
 			content: JSON.stringify(listOfSection),
 			description: "Obsidian vault",
@@ -285,7 +287,7 @@ class FileParser {
 	}> {
 		const siblingObj: { [key: string]: Stat } = {};
 		const linkRegex = /\[(.*?)\]\((https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\)|\[\[(.*?)\]\]|\b(https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\b/g;
-		const internalImageLink = /\!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
+		const internalImageLink = /!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
 
 		let match;
 		let index = 0;
@@ -308,6 +310,8 @@ class FileParser {
 				newAlias: `![${m[1]}](${await this.getFileUrl(m[1], siblingObj, apiToken)})`
 			}))
 		);
+
+		console.log(internalImageMarkDownLink)
 
 		for (const replacement of [...internalImageMarkDownLink]) {
 			const {originalAlias, newAlias} = replacement;
@@ -373,7 +377,9 @@ class FileParser {
 
 		}
 
-		return await this.uploadFile(fileDetails as TFile, apiToken);
+		const imageUrl = await this.uploadFile(fileDetails as TFile, apiToken)
+		this.imageUrls.push(imageUrl)
+		return imageUrl
 	}
 
 	async uploadFile(file: TFile, apiToken: null | string) {
