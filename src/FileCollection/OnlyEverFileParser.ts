@@ -114,6 +114,8 @@ class OnlyEverFileParser {
 
 		return {
 			title: file.basename,
+			banner_image: this.imageUrls.length > 0 ? this.imageUrls[0] : '',
+			slug: `ob-${file.stat.ctime}`,
 			content: JSON.stringify(listOfSection),
 			description: "Obsidian vault",
 			heading: listOfH1,
@@ -294,7 +296,6 @@ class OnlyEverFileParser {
 				'newAlias': `![${m[1]}](${await this.getFileUrl(m[1], siblingObj, apiToken)})`
 			}))
 		);
-
 
 		for (const replacement of [...internalImageMarkDownLink]) {
 			const {originalAlias, newAlias} = replacement;
