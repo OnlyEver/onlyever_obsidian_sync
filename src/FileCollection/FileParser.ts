@@ -1,26 +1,6 @@
-import {App, TFile, TFolder, arrayBufferToBase64} from "obsidian";
+import {App, arrayBufferToBase64, TFile, TFolder} from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
-
-interface OeSection {
-	title: string
-	content: string;
-	heading_level: number;
-	children: OeSection[]
-}
-interface OeInternalLink{
-	slug: string
-	id: string|null
-}
-
-interface Stat {
-	stat: {
-		ctime: number,
-		mtime: number,
-		size: number,
-	},
-	// extension: string,
-	path: string
-}
+import {OeInternalLink, OeSection, Stat} from "../interfaces";
 
 class FileParser {
 	app: App;
@@ -117,10 +97,11 @@ class FileParser {
 	 * @param file TFile
 	 * @param parent
 	 * @param apiToken
-	 *
+	 * @param renameEvent
+     *
 	 * @returns Promise<object>
 	 */
-	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
+	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string, renameEvent=false): Promise<object> {
 		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
 		const {content, internalLinks} = await this.parseInternalLinks(
@@ -135,15 +116,20 @@ class FileParser {
 			title: file.basename,
 			banner_image: this.imageUrls.length > 0 ? this.imageUrls[0] : '',
 			content: JSON.stringify(listOfSection),
-			description: "Obsidian vault",
+			description: "Obsidian Note",
 			heading: listOfH1,
 			internal_links: internalLinks,
 			source_type: "text",
 			source_category: {
 				category: 'notes',
-				sub_category: 'obsidian'
-			}
+				sub_category: 'obsidian',
+			},
+			filePath: file.path,
+			fileCtime: file.stat.ctime,
+			// @ts-ignore
+			...(renameEvent ? { tempTitle: file.tempTitle } : {})
 		};
+
 	}
 
 	/**
@@ -375,7 +361,8 @@ class FileParser {
 		}
 
 		const imageUrl = await this.uploadFile(fileDetails as TFile, apiToken)
-		this.imageUrls.push(imageUrl)
+        // @ts-ignore
+        this.imageUrls.push(imageUrl)
 
 		return imageUrl
 	}

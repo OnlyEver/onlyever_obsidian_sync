@@ -86,3 +86,30 @@ If your plugin does not need CSS, delete this file.
 .icon {
 	position: absolute;
 }
+
+
+.listContainer{
+}
+
+.listItem{
+	display: flex;
+	justify-content: space-between;
+	padding: 8px 4px;
+}
+.buttonContainer{
+	margin-top: 16px;
+	display: flex;
+	justify-content: space-between;
+	padding: 4px;
+}
+
+
+hr{
+	margin: 16px 0;
+}
+
+
+.primary-bg{
+	background: hsl( 258 , 88% , 66% ) !important;
+}
+

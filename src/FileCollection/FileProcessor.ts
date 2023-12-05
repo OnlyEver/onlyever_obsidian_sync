@@ -1,6 +1,6 @@
-import {App, Notice, TAbstractFile, TFile} from "obsidian";
-import {FileParser} from "./FileParser";
-import {OnlyEverApi} from "../Api/onlyEverApi";
+import { App, Notice, TFile, TAbstractFile } from "obsidian";
+import { FileParser } from "./FileParser";
+import { OnlyEverApi } from "../Api/onlyEverApi";
 
 class FileProcessor {
 	app: App;
@@ -29,35 +29,33 @@ class FileProcessor {
 
 		for (const file of files) {
 			processedFiles.push(
-				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
+				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken, false)
 			);
 		}
 
-		await this.onlyEverApi.syncFiles(processedFiles);
-
-		return true;
+		return await this.onlyEverApi.syncFiles(processedFiles);
 	}
 
 	/*
 	 * Syncs active marked file in vault
 	 */
-	async processSingleFile(file: null | TFile = null) {
+	async processSingleFile(file: null | TFile = null, renameEvent = false) {
 		file = file ?? this.app.workspace.getActiveFile()
 		const processedFiles: object[] = [];
 
 		if (!file) {
 			new Notice("No note is open.");
 
-			return;
+			return false;
 		}
 
 		if (await this.fileParser.fileHasSyncFlag(file)) {
-			processedFiles.push(
-				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
-			);
+			processedFiles.push( await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken, renameEvent) );
 			
-			await this.onlyEverApi.syncFiles(processedFiles);
+			return await this.onlyEverApi.syncFiles(processedFiles);
 		}
+
+		return false
 	}
 
 	/*

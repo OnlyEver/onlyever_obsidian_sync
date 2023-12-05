@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import {App, TFile} from "obsidian";
 import { FileProcessor } from "./FileProcessor";
 
 class FileManager {
@@ -14,8 +14,9 @@ class FileManager {
 	}
 
 	async onActiveFileSaveAction() {
-		this.fileProcessor.processSingleFile();
+		return this.fileProcessor.processSingleFile()
 	}
 }
 
 export { FileManager };
+

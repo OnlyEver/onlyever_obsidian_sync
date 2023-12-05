@@ -1,11 +1,6 @@
-import axios from "axios";
-import { Notice, App } from "obsidian";
-
-interface ApiData {
-	success: boolean;
-	data: object;
-	fileToken: string;
-}
+import axios, {AxiosResponse} from "axios";
+import {App, Notice} from "obsidian";
+import {ApiResponse, OeSyncResponse, OeSyncResponseData} from "../interfaces";
 
 class OnlyEverApi {
 	app: App;
@@ -20,45 +15,41 @@ class OnlyEverApi {
 	 * Syncs Multiple file with only ever atlas
 	 *
 	 * @param files
+	 * @param canOverwrite
 	 *
-	 * @return void
 	 */
-	async syncFiles(files: object[]) {
+	async syncFiles(files: object[], canOverwrite = false): Promise<OeSyncResponseData | false> {
 		try {
 			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
 
-			if (files.length > 0) {
-				axios({
-					method: "post",
-					url: endpoint,
-					headers: {
-						"Content-Type": "application/json",
-					},
-					data: files,
+			if(files.length > 0){
+				console.log(files)
+				const res: AxiosResponse  =  await axios.post(endpoint, {
+					files: files,
+					canOverride: canOverwrite
 				})
-					.then((res) => {
-						if ((res?.data as ApiData).success) {
-							new Notice(`Synced file successfully.`, 400);
-						} else {
-							new Notice(
-								"Notes sync failed. Please ensure you have correct plugin token in the settings."
-							);
-						}
-					})
-					.catch((err) => {
-						let errorMessage =
-							"Notes sync failed. Please ensure you have correct plugin token in the settings.";
+                const syncResponse: OeSyncResponse = res.data as OeSyncResponse
 
-						if (err["code"] === "ERR_NETWORK") {
-							errorMessage =
-								"Notes sync failed. Please ensure you have internet connection.";
-						}
+                if(syncResponse.success){
+                    new Notice(syncResponse.message, 2000)
 
-						new Notice(errorMessage);
-					});
+                    return syncResponse.data
+                }
+
+				new Notice(syncResponse.message, 2000);
 			}
-		} catch (err) {
-			new Notice(`Failed to sync file`);
+
+			return false
+		} catch (error) {
+			let message =  'Note sync failed. Please ensure you have correct plugin token in the settings.';
+
+			if(error['code'] === 'ERR_NETWORK'){
+				message = "Note sync failed. Please ensure you have internet connection."
+			}
+
+			new Notice(message)
+
+			return false;
 		}
 	}
 
@@ -78,7 +69,7 @@ class OnlyEverApi {
 				},
 			})
 				.then((res) => {
-					if ((res?.data as ApiData)?.success) {
+					if ((res?.data as ApiResponse)?.success) {
 						return {'status':true};
 					}
 
@@ -119,8 +110,8 @@ class OnlyEverApi {
 					},
 					data: data,
 				}).then((res) => {
-					if ((res?.data as ApiData).success) {
-						new Notice(`Img file successfully`, 400);
+					if ((res?.data as ApiResponse).success) {
+						new Notice(`Synced file successfully`, 400);
 
 						return res.data.filePath;
 					} else {
