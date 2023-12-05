@@ -120,7 +120,7 @@ class OnlyEverApi {
 					data: data,
 				}).then((res) => {
 					if ((res?.data as ApiData).success) {
-						new Notice(`Synced file successfully`, 400);
+						new Notice(`Img file successfully`, 400);
 
 						return res.data.filePath;
 					} else {
