@@ -1,12 +1,8 @@
-import {Plugin, addIcon, debounce, TAbstractFile, TFile} from "obsidian";
-import { FileManager as Manager } from "./src/FileCollection/FileManager";
-import { ObsidianOnlyeverSettingsTab } from "./src/ObsidianOnlyeverSettingsTab";
-
-interface ObsidianOnlyeverSettings {
-	apiToken: string;
-	tokenValidity: boolean | null;
-	syncInterval: any;
-}
+import {addIcon, debounce, Plugin, TAbstractFile, TFile} from "obsidian";
+import {FileManager as Manager} from "./src/FileCollection/FileManager";
+import {ObsidianOnlyeverSettingsTab} from "./src/ObsidianOnlyeverSettingsTab";
+import {ObsidianOnlyeverSettings} from "./src/interfaces";
+import {OverrideConfirmationPopup} from "./src/OverrideConfirmationPopup";
 
 const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
 	apiToken: "",
@@ -28,7 +24,11 @@ export default class MyPlugin extends Plugin {
 		this.scanVault();
 		this.registerAllEvents();
 
-		await this.manager.fileProcessor.processFiles();
+		this.manager.fileProcessor.processFiles().then((result)=>{
+			if(result && result.replacementNotes.length!==0){
+				new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken)
+			}
+		})
 
 		this.scheduledSync();
 		this.addSettingTab(new ObsidianOnlyeverSettingsTab(this.app, this));
@@ -99,7 +99,11 @@ export default class MyPlugin extends Plugin {
 		const syncIntervalMs = 60 * 60 * 1000;
 
 		this.settings.syncInterval = setInterval(() => {
-			this.manager.fileProcessor.processFiles();
+			this.manager.fileProcessor.processFiles().then((result) => {
+				if (result && result.replacementNotes.length !== 0) {
+					new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
+				}
+			});
 			this.saveSettings();
 		}, syncIntervalMs);
 	}
@@ -109,49 +113,63 @@ export default class MyPlugin extends Plugin {
 	 */
 	private registerAllEvents() {
 
-		const debouncedSyncOnModify  = debounce((file: TAbstractFile)=>{
-			this.manager.fileProcessor.processSingleFile(file as TFile)
-		}, 30000, true)
+		const debouncedSyncOnModify = debounce((file: TAbstractFile) => {
+			this.manager.fileProcessor.processSingleFile(file as TFile).then((result) => {
+				if (result && result.replacementNotes.length !== 0) {
+					new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
+				}
+			})
+		}, 2000, true)
 
 		/*
 		 * Registers and handles initial Obsidian open event
 		 */
-		this.registerEvent(
-			// @ts-ignore
-			this.app.workspace.on("layout-ready", () => {
-				this.manager.fileProcessor.processFiles().then();
-			})
-		);
+		// @ts-ignore
+		this.app.workspace.on("layout-ready", () => {
+			this.manager.fileProcessor.processFiles().then((result) => {
+				if (result && result.replacementNotes.length !== 0) {
+					new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
+				}
+			});
+		})
 
 		/*
 		 * Registers and handles active note edit event
 		 */
-		this.registerEvent(
-			this.app.vault.on("modify", (file) => {
-				debouncedSyncOnModify(file)
-			})
-		);
+		this.app.vault.on("modify", (file) => {
+			debouncedSyncOnModify(file)
+		})
 
 		/*
 		 * Registers and handles vault's note rename event
 		 */
-		this.registerEvent(
-			this.app.vault.on("rename", () => {
-				this.manager.onActiveFileSaveAction().then();
+		this.app.vault.on("rename", (file, oldPath) =>{
+			const pathSegments = oldPath.split("/");
+			const oldName = pathSegments[pathSegments.length-1]
+			const lastDotIndex = oldName.lastIndexOf('.');
+			// @ts-ignore
+            file.tempTitle = lastDotIndex !== -1 ? oldName.substring(0, lastDotIndex) : oldName
+
+			this.manager.fileProcessor.processSingleFile(file as TFile).then((result)=>{
+				if (result && result.replacementNotes.length !== 0) {
+					new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
+				}
 			})
-		);
+		})
 
 		/*
 		 * Registers and handles note save event
 		 */
-		const saveCommandDefinition = (this.app as any).commands?.commands?.[
-			"editor:save-file"
-		];
+		const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
 		const save = saveCommandDefinition?.callback;
 
 		if (typeof save === "function") {
 			saveCommandDefinition.callback = async () => {
-				this.manager.onActiveFileSaveAction().then();
+				this.manager.onActiveFileSaveAction().then((result) => {
+					if (result && result.replacementNotes.length !== 0) {
+						new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
+					}
+				});
 			};
 		}
 	}

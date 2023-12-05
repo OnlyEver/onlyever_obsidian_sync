@@ -1,4 +1,4 @@
-import {App, Notice, TAbstractFile, TFile} from "obsidian";
+import {App, Notice, TFile} from "obsidian";
 import {FileParser} from "./FileParser";
 import {OnlyEverApi} from "../Api/onlyEverApi";
 
@@ -33,9 +33,7 @@ class FileProcessor {
 			);
 		}
 
-		await this.onlyEverApi.syncFiles(processedFiles);
-
-		return true;
+		return await this.onlyEverApi.syncFiles(processedFiles);
 	}
 
 	/*
@@ -48,16 +46,16 @@ class FileProcessor {
 		if (!file) {
 			new Notice("No note is open.");
 
-			return;
+			return false;
 		}
 
 		if (await this.fileParser.fileHasSyncFlag(file)) {
-			processedFiles.push(
-				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
-			);
+			processedFiles.push( await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken) );
 			
-			await this.onlyEverApi.syncFiles(processedFiles);
+			return await this.onlyEverApi.syncFiles(processedFiles);
 		}
+
+		return false
 	}
 
 	/*

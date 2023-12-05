@@ -1,26 +1,6 @@
-import {App, TFile, TFolder, arrayBufferToBase64} from "obsidian";
+import {App, arrayBufferToBase64, TFile, TFolder} from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
-
-interface OeSection {
-	title: string
-	content: string;
-	heading_level: number;
-	children: OeSection[]
-}
-interface OeInternalLink{
-	slug: string
-	id: string|null
-}
-
-interface Stat {
-	stat: {
-		ctime: number,
-		mtime: number,
-		size: number,
-	},
-	// extension: string,
-	path: string
-}
+import {OeInternalLink, OeSection, Stat} from "../interfaces";
 
 class FileParser {
 	app: App;
@@ -130,17 +110,22 @@ class FileParser {
 
 		const {listOfSection, listOfH1} = this.parseMarkdownContentToOeJsonStructure(content);
 
+
 		return {
 			title: file.basename,
 			content: JSON.stringify(listOfSection),
-			description: "Obsidian vault",
+			description: "Obsidian Note",
 			heading: listOfH1,
 			internal_links: internalLinks,
 			source_type: "text",
 			source_category: {
 				category: 'notes',
-				sub_category: 'obsidian'
-			}
+				sub_category: 'obsidian',
+			},
+			filePath: file.path,
+			fileCtime: file.stat.ctime,
+			// @ts-ignore
+			tempTitle: file.tempTitle ?? file.basename
 		};
 	}
 
@@ -284,7 +269,7 @@ class FileParser {
 	}> {
 		const siblingObj: { [key: string]: Stat } = {};
 		const linkRegex = /\[(.*?)\]\((https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\)|\[\[(.*?)\]\]|\b(https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\b/g;
-		const internalImageLink = /\!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
+		const internalImageLink = /!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
 
 		let match;
 		let index = 0;
@@ -372,7 +357,11 @@ class FileParser {
 
 		}
 
-		return await this.uploadFile(fileDetails as TFile, apiToken);
+		const imageUrl =  await this.uploadFile(fileDetails as TFile, apiToken)
+		// @ts-ignore
+		this.uploadedImages.push(imageUrl)
+
+		return imageUrl
 	}
 
 	async uploadFile(file: TFile, apiToken: null | string) {
