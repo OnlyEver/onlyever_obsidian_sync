@@ -4,6 +4,7 @@ import {OeInternalLink, OeSection, Stat} from "../interfaces";
 
 class FileParser {
 	app: App;
+	uploadedImages: any[];
 
 	//This is for filtering.
 	markForSyncFlag = "oe_sync";
@@ -16,6 +17,7 @@ class FileParser {
 	 */
 	constructor(app: App) {
 		this.app = app;
+		this.uploadedImages = []
 	}
 
 	/**
@@ -93,17 +95,19 @@ class FileParser {
 	/**
 	 * Parse to source list object format.
 	 *
+	 * @param userId
 	 * @param file TFile
 	 * @param parent
 	 * @param apiToken
-	 *
 	 * @param renameEvent
+	 *
 	 * @returns Promise<object>
 	 */
-	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string, renameEvent=false): Promise<object> {
+	async parseToJson(userId: string, file: TFile, parent: null | TFolder, apiToken: null | string, renameEvent= false): Promise<object> {
 		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
 		const {content, internalLinks} = await this.parseInternalLinks(
+			userId,
 			contentsWithoutFlag,
 			parent,
 			apiToken
@@ -125,7 +129,7 @@ class FileParser {
 			filePath: file.path,
 			fileCtime: file.stat.ctime,
 			// @ts-ignore
-			...(renameEvent ? { tempTitle: file.tempTitle } : {})
+			...(renameEvent ? { renamed: true } : {})
 		};
 
 	}
@@ -259,12 +263,13 @@ class FileParser {
 	/**
 	 * Update the internal links related to wiki, YouTube and obsidian with [title|alias|index|source] format
 	 *
+	 * @param userId
 	 * @param content
 	 * @param parent
 	 * @param apiToken
 	 *
 	 */
-	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string): Promise<{
+	async parseInternalLinks(userId: string, content: string, parent: null | TFolder, apiToken: null | string): Promise<{
 		content: string,
 		internalLinks: OeInternalLink[]
 	}> {
@@ -323,7 +328,7 @@ class FileParser {
 					alias = splitValues[1];
 				}
 
-				const objectId = `ob-${await this.getFileCtime(filePath, siblingObj)}`;
+				const objectId = `${userId}-${await this.getFileCtime(filePath, siblingObj)}`;
 				url = objectId;
 				title = objectId;
 				source = 'obsidian';

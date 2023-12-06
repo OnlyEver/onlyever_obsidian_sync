@@ -24,10 +24,9 @@ class OnlyEverApi {
 			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
 
 			if(files.length > 0){
-				console.log(files)
 				const res: AxiosResponse  =  await axios.post(endpoint, {
 					files: files,
-					canOverride: canOverwrite
+					canOverwrite: canOverwrite
 				})
 				const syncResponse: OeSyncResponse = res.data as OeSyncResponse
 
@@ -56,8 +55,6 @@ class OnlyEverApi {
 
 	/**
 	 * Validate api token
-	 *
-	 * @return ?string
 	 */
 	async validateApiToken(token: string) {
 		try {
@@ -71,10 +68,10 @@ class OnlyEverApi {
 			})
 				.then((res) => {
 					if ((res?.data as ApiResponse)?.success) {
-						return {'status':true};
+						return { status:true, userId: res.data.userId };
 					}
 
-					return {'status':true};
+					return { status:true, userId: ''};
 				})
 				.catch((err) => {
 					if (err["code"] === "ERR_NETWORK") {
@@ -82,13 +79,13 @@ class OnlyEverApi {
 							"Token verification failed. Please ensure you have internet connection."
 						);
 
-						return {'status':null};
+						return {status: false, userId: ''};
 					}
 
-					return {'status':false};
+					return {status: false, userId: ''};
 				});
 		} catch (err) {
-			return {'status':false}
+			return { status: false, userId: ''}
 		}
 	}
 
@@ -112,8 +109,6 @@ class OnlyEverApi {
 					data: data,
 				}).then((res) => {
 					if ((res?.data as ApiResponse).success) {
-						new Notice(`Synced file successfully`, 400);
-
 						return res.data.filePath;
 					} else {
 						new Notice(

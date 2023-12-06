@@ -31,8 +31,10 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 		let validityElement: ExtraButtonComponent;
 
 		const debouncedTokenVerification  = debounce((value: string)=>{
-			this.onlyEverApi.validateApiToken(value).then((result)=>{
-				if (result["status"]) {
+			this.onlyEverApi.validateApiToken(value).then(async (result) => {
+				if (result.status) {
+					this.plugin.settings['userId'] = result.userId
+					await this.plugin.saveData(this.plugin.settings)
 					validityElement.setIcon("checkIcon");
 					errorElement.innerText = "";
 				} else if (result["status"] === false) {
@@ -41,7 +43,7 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 					errorElement.innerText = value.length > 0 ? "The PLUGIN TOKEN is incorrect." : "";
 				}
 			})
-		}, 500, true)
+		}, 150, true)
 
 
 		new Setting(containerEl)

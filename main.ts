@@ -1,13 +1,14 @@
 import {addIcon, debounce, Plugin, TAbstractFile, TFile} from "obsidian";
 import {FileManager as Manager} from "./src/FileCollection/FileManager";
 import {ObsidianOnlyeverSettingsTab} from "./src/ObsidianOnlyeverSettingsTab";
-import {ObsidianOnlyeverSettings} from "./src/interfaces";
+import {ObsidianOnlyeverSettings, OeSyncResponseData} from "./src/interfaces";
 import {OverrideConfirmationPopup} from "./src/OverrideConfirmationPopup";
 
 const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
     apiToken: "",
     tokenValidity: false,
     syncInterval: null,
+	userId: ""
 };
 
 
@@ -24,10 +25,8 @@ export default class MyPlugin extends Plugin {
         this.scanVault();
         this.registerAllEvents();
 
-        this.manager.fileProcessor.processFiles().then((result) => {
-            if (result && result.replacementNotes.length !== 0) {
-                new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken)
-            }
+        this.manager.fileProcessor.processFiles(this.settings.userId).then((result) => {
+			this.overwriteWorkflow(result)
         })
 
         this.scheduledSync();
@@ -64,7 +63,7 @@ export default class MyPlugin extends Plugin {
             id: "sync-all-obsidian-sync-true-files",
             name: "Sync Notes",
             callback: () => {
-                this.manager.fileProcessor.processSingleFile();
+                this.manager.fileProcessor.processSingleFile(this.settings.userId);
             },
         });
     }
@@ -99,10 +98,8 @@ export default class MyPlugin extends Plugin {
         const syncIntervalMs = 60 * 60 * 1000;
 
         this.settings.syncInterval = setInterval(() => {
-            this.manager.fileProcessor.processFiles().then((result) => {
-                if (result && result.replacementNotes.length !== 0) {
-                    new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
-                }
+            this.manager.fileProcessor.processFiles(this.settings.userId).then((result) => {
+				this.overwriteWorkflow(result)
             });
             this.saveSettings();
         }, syncIntervalMs);
@@ -114,10 +111,8 @@ export default class MyPlugin extends Plugin {
     private registerAllEvents() {
 
         const debouncedSyncOnModify = debounce((file: TAbstractFile) => {
-            this.manager.fileProcessor.processSingleFile(file as TFile).then((result) => {
-                if (result && result.replacementNotes.length !== 0) {
-                    new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
-                }
+            this.manager.fileProcessor.processSingleFile(this.settings.userId, file as TFile).then((result) => {
+				this.overwriteWorkflow(result)
             })
         }, 30000, true)
 
@@ -127,56 +122,56 @@ export default class MyPlugin extends Plugin {
         this.registerEvent(
             // @ts-ignore
             this.app.workspace.on("layout-ready", () => {
-                this.manager.fileProcessor.processFiles().then((result) => {
-                    if (result && result.replacementNotes.length !== 0) {
-                        new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
-                    }
+                this.manager.fileProcessor.processFiles(this.settings.userId).then((result) => {
+                    this.overwriteWorkflow(result)
                 });
+
+				/*
+ 				 * Registers and handles active note edit event
+ 				 */
+				this.registerEvent(
+					this.app.vault.on("modify", (file) => {
+						debouncedSyncOnModify(file)
+					})
+				);
+
+				/*
+				 * Registers and handles vault's note rename event
+				 */
+				this.registerEvent(
+					this.app.vault.on("rename", (file, oldPath) => {
+						const pathSegments = oldPath.split("/");
+						const oldName = pathSegments[pathSegments.length - 1]
+						const lastDotIndex = oldName.lastIndexOf('.');
+						// @ts-ignore
+						file.tempTitle = lastDotIndex !== -1 ? oldName.substring(0, lastDotIndex) : oldName
+
+						this.manager.fileProcessor.processSingleFile(this.settings.userId, file as TFile, true).then((result) => {
+							this.overwriteWorkflow(result)
+						})
+					})
+				);
+
+				/*
+				 * Registers and handles note save event
+				 */
+				const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
+				const save = saveCommandDefinition?.callback;
+
+				if (typeof save === "function") {
+					saveCommandDefinition.callback = async () => {
+						this.manager.onActiveFileSaveAction(this.settings.userId).then((result) => {
+							this.overwriteWorkflow(result)
+						});
+					};
+				}
             })
         );
-
-        /*
-         * Registers and handles active note edit event
-         */
-        this.registerEvent(
-            this.app.vault.on("modify", (file) => {
-                debouncedSyncOnModify(file)
-            })
-        );
-
-        /*
-         * Registers and handles vault's note rename event
-         */
-        this.registerEvent(
-            this.app.vault.on("rename", (file, oldPath) => {
-                const pathSegments = oldPath.split("/");
-                const oldName = pathSegments[pathSegments.length - 1]
-                const lastDotIndex = oldName.lastIndexOf('.');
-                // @ts-ignore
-                file.tempTitle = lastDotIndex !== -1 ? oldName.substring(0, lastDotIndex) : oldName
-
-                this.manager.fileProcessor.processSingleFile(file as TFile, true).then((result) => {
-                    if (result && result.replacementNotes.length !== 0) {
-                        new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
-                    }
-                })
-            })
-        );
-
-        /*
-         * Registers and handles note save event
-         */
-        const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
-        const save = saveCommandDefinition?.callback;
-
-        if (typeof save === "function") {
-            saveCommandDefinition.callback = async () => {
-                this.manager.onActiveFileSaveAction().then((result) => {
-                    if (result && result.replacementNotes.length !== 0) {
-                        new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
-                    }
-                });
-            };
-        }
     }
+
+	overwriteWorkflow(result:false|OeSyncResponseData){
+		if (result && result.replacementNotes.length !== 0) {
+			new OverrideConfirmationPopup(this.app, result.replacementNotes, this.settings.apiToken).open()
+		}
+	}
 }
