@@ -13,8 +13,8 @@ class FileManager {
 		this.fileProcessor = new FileProcessor(this.app, apiToken);
 	}
 
-	async onActiveFileSaveAction() {
-		return this.fileProcessor.processSingleFile()
+	async onActiveFileSaveAction(userId: string) {
+		return this.fileProcessor.processSingleFile(userId)
 	}
 }
 

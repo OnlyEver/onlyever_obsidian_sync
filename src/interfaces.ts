@@ -30,6 +30,7 @@ export interface ObsidianOnlyeverSettings {
 	apiToken: string;
 	tokenValidity: boolean | null;
 	syncInterval: any;
+	userId: string;
 }
 
 export interface ReplacementNote {
