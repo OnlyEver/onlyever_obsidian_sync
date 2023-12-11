@@ -1,0 +1,84 @@
+---
+title: "Sample R Markdown Document"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# Preface
+> [!WARNING]
+> This document is underconstruction and is subject to change.
+
+> [!IMPORTANT]
+> This document is designed to offer fundamental insights into the workings of the system. We've crafted the documentation with simplicity in mind, ensuring that individuals with non-technical backgrounds can grasp the essence of the system. This is why, some technical terminologies are loosely used. While this approach facilitates understanding for beginners, individuals with technical expertise may find that certain details are presented in a simplified manner that diverges from precise technical terminology and the norm.  
+
+## Terminologies
+- **COLLABORATORS:** Non devlopers associates and maintainers of this project. Can skip reading `For DEVS` sections. 
+- **DEVS:** Developers that have access to the code base and require to know details, please read the entire document including `For COLLABORATORS` sections.
+
+## How to read this document
+- Each topic if necessary starts with a image of the procedure being described. 
+- For: **COLLABORATORS** we recommend using the image and the summary below (if exists) the to understand the topic. 
+- For **DEVS** all classes and methods will be documented as necessary. All classes and methods in this document will be embeded links that redirect to the documentation of said module.
+
+# Introduction 
+Onlyever_obsidian_sync is an obsidian plugin that lets Onlyever users sync their Obsidian notes to their Onlyever application. 
+
+# System overview
+The concept behind syncing data is very simple. Given that an Onlyever app user uses the Obsidian plugin, the plugin creates source document/object for every new note that he/she syncs from the plugin and update the source object incase theres updates to the notes.
+![System breakdown](images/Onlyever-obsidian-sync-system.svg)
+
+# System breakdown
+## Onlyever_obsidian_sync obsidian plugin
+This topic deals with breaking down the internals of the plugin. 
+![Onlyever obsidian plugin breakdown](images/Onlyever-obsidian-sync-plugin-components.svg)
+
+### For COLLABORATORS
+- main : This is the entry point of our plugin. This module is acts as an interface for our code and the obsidian ecosystem(native API). This module handles the plugin lifecycle, event listening and handling, loading other modules, etc. 
+- onlyever api : This module contains code that is responsible for communicating with Atlas serverless functions. 
+- settings tab : This module contains code that registers features to the setting tab of onlyever_obsidian_sync plugin. 
+- overwrite popup : This module contains code that shows overwrite popup when an overwrite condtion is met. 
+- file collection : This is a module contains the following submodules with their own responsibilities:
+    - file manager: Uses Obsidaian native API to access the vault and the files within the vault.
+    - file processor: Parent to file parser. Validates and provides required notes for file parser to parse.
+    - file parser: Performs all necessary parsing needed to create a valid payload for onlyever api module to use. 
+
+### For DEVS
+- Check out [Documentation of Main](core/main).
+- Check out [Documentation of File manager](core/file-manager).
+- Check out [Documentation of File processor](core/file-processor).
+- Check out [Documentation of File parser](core/file-parser).
+- Check out [Documentation of Onlyever API](core/file-onlyever-api).
+- Check out [Documentation of Settings tab](core/file-settings-tab).
+- Check out [Documentation of Overwrite modal](core/file-overwrite-modal).
+
+# Onlyever sync mechanism
+## Plugin function
+Heres the general flow of how a marked file is treated.
+![Onlyever obsidian plugin dfd](images/Onlyever-obsidian-sync-syncMech.svg)
+
+### For COLLABORATORS
+**When a valid event is fired. Respective functions are called. The flow of all the functions are relatively same, the only thing that is different is how many files are affected by the event. Read more about [events and functions]().**
+  1. Get note content.
+  2. Identify all markdown internal link. These are links to other notes (Syntax: `[[Other-markdown-note]`) and remote urls of wikipedia and youtube (Syntax `[Alias](url)`).
+  3. Identify all images (Embeded images with the syntax `![[Image name]]`).
+  4. For all identified images, upload them to a AWS s3 bucket and capture generated url.
+  5. Replace all instances of identified images syntax with new syntax. `![Image name](/bucket url)` in the content.
+  6. Parse the content to convert all markdown internal links to Onlyever internal links. Syntax : `[[alias|title|slug|index]]`.
+  7. The above steps, step 5 and 6 generates other necessary attributes needed for making an sync request like : `banner_image`, `internal_links`, `headings`, `contents`, etc.
+  8. Parse content to json as requried in the request.
+  9. Make sync request.
+
+
+### For DEVS
+
+
+## Atlas function
+Heres a breakdown of the 'syncNotes' function in Atlas app services.
+![Onlyever obsidian Atlas function](images/Onlyever-obsidian-sync-syncFunction.svg)
+
+
+### For COLLABORATORS
+
+### For DEVS
