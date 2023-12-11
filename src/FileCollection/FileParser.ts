@@ -223,7 +223,7 @@ class FileParser {
 							listOfSection.push({
 								title: '',
 								content: initialContent,
-								heading_level: 99,
+								heading_level: 0,
 								children: [],
 							});
 							initialContent = '';
@@ -260,7 +260,7 @@ class FileParser {
 			const initialSection: OeSection = {
 				title: '',
 				content: initialContent,
-				heading_level: 99,
+				heading_level: 0,
 				children: []
 			}
 
