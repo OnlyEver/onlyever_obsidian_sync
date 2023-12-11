@@ -1,51 +1,134 @@
-<!-- ---
+---
 title: "Sample R Markdown Document"
 output:
   html_document:
+    theme: darkly
     toc: true
     toc_float: true
 ---
 
+<style>
+.alert {
+  border-width: 4px;
+  padding: 1em;
+  font-medium;
+  select-none;
+  w-full;
+  mb-2;
+}
+
+.alert-info {
+  border-color: #3498db;
+  background-color: #3498db;
+  hover:border-color: #2980b9;
+}
+
+.alert-warning {
+  border-color: #f39c12;
+  background-color: #f39c12;
+  hover:border-color: #d35400;
+}
+
+.alert-erro {
+  border-color: #e74c3c;
+  background-color: #e74c3c;
+  hover:border-color: #c0392b;
+}
+
+.alert-success {
+  border-color: #2ecc71;
+  background-color: #2ecc71;
+  hover:border-color: #27ae60;
+}
+
+.alert-comment {
+  border-color: #95a5a6;
+  background-color: #bdc3c7;
+  hover:border-color: #7f8c8d;
+}
+
+.alert-important {
+  border-color: #9b59b6;
+  background-color: #9b59b6;
+  hover:border-color: #8e44ad;
+}
+
+.alert-cyan {
+  border-color: #1abc9c;
+  background-color: #1abc9c;
+  hover:border-color: #16a085;
+}
+
+.alert-pink {
+  border-color: #e91e63;
+  background-color: #e91e63;
+  hover:border-color: #d81b60;
+}
+
+.alert-indigo {
+  border-color: #3f51b5;
+  background-color: #3f51b5;
+  hover:border-color: #3949ab;
+}
+
+.alert-rose {
+  border-color: #e91e63;
+  background-color: #e91e63;
+  hover:border-color: #d81b60;
+}
+
+.alert-orange {
+  border-color: #e67e22;
+  background-color: #e67e22;
+  hover:border-color: #d35400;
+}
+</style>
+
 # Preface
-> [!WARNING]
-> This document is underconstruction and is subject to change.
 
-> [!IMPORTANT]
-> This document is designed to offer fundamental insights into the workings of the system. We've crafted the documentation with simplicity in mind, ensuring that individuals with non-technical backgrounds can grasp the essence of the system. This is why, some technical terminologies are loosely used. While this approach facilitates understanding for beginners, individuals with technical expertise may find that certain details are presented in a simplified manner that diverges from precise technical terminology and the norm.  
 
+<div class="alert alert-warning">
+⚠️: This document is underconstruction and is subject to change.
+</div>
+
+<div class="alert alert-important">
+💬: 
+This document is designed to offer fundamental insights into the workings of the system. We've crafted the documentation with simplicity in mind, ensuring that individuals with non-technical backgrounds can grasp the essence of the system. This is why, some technical terminologies are loosely used. While this approach facilitates understanding for beginners, individuals with technical expertise may find that certain details are presented in a simplified manner that diverges from precise technical terminology and the norm.  
+</div>
 ## Terminologies
-- **COLLABORATORS:** Non devlopers associates and maintainers of this project. Can skip reading `For DEVS` sections. 
-- **DEVS:** Developers that have access to the code base and require to know details, please read the entire document including `For COLLABORATORS` sections.
+- **👨‍💼 COLLABORATORS:** Non devlopers associates and maintainers of this project. Can skip reading `For DEVS` sections. 
+- **👨‍💻 DEVS:** Developers that have access to the code base and require to know details, please read the entire document including `For COLLABORATORS` sections.
 
 ## How to read this document
 - Each topic if necessary starts with a image of the procedure being described. 
-- For: **COLLABORATORS** we recommend using the image and the summary below (if exists) the to understand the topic. 
-- For **DEVS** all classes and methods will be documented as necessary. All classes and methods in this document will be embeded links that redirect to the documentation of said module.
+- **👨‍💼 For COLLABORATORS: ** we recommend using the image and the summary below (if exists) the to understand the topic. 
+- **👨‍💻 For DEVS:** all classes and methods will be documented as necessary. All classes and methods in this document will be embeded links that redirect to the documentation of said module.
 
-# Introduction 
-Onlyever_obsidian_sync is an obsidian plugin that lets Onlyever users sync their Obsidian notes to their Onlyever application. 
+---
 
-# System overview
+# System Breakdown
+
+## High level diagram
 The concept behind syncing data is very simple. Given that an Onlyever app user uses the Obsidian plugin, the plugin creates source document/object for every new note that he/she syncs from the plugin and update the source object incase theres updates to the notes.
 ![System breakdown](images/Onlyever-obsidian-sync-system.svg)
 
-# System breakdown
-## Onlyever_obsidian_sync obsidian plugin
-This topic deals with breaking down the internals of the plugin. 
+
+## Plugin modules
+This topic deals with breaking down the internals of the plugin on a abstract level. 
 ![Onlyever obsidian plugin breakdown](images/Onlyever-obsidian-sync-plugin-components.svg)
 
-### For COLLABORATORS
-- main : This is the entry point of our plugin. This module is acts as an interface for our code and the obsidian ecosystem(native API). This module handles the plugin lifecycle, event listening and handling, loading other modules, etc. 
-- onlyever api : This module contains code that is responsible for communicating with Atlas serverless functions. 
-- settings tab : This module contains code that registers features to the setting tab of onlyever_obsidian_sync plugin. 
-- overwrite popup : This module contains code that shows overwrite popup when an overwrite condtion is met. 
-- file collection : This is a module contains the following submodules with their own responsibilities:
-    - file manager: Uses Obsidaian native API to access the vault and the files within the vault.
-    - file processor: Parent to file parser. Validates and provides required notes for file parser to parse.
-    - file parser: Performs all necessary parsing needed to create a valid payload for onlyever api module to use. 
+### 👨‍💼 For COLLABORATORS
+- **main** : This is the entry point of our plugin. This module is acts as an interface for our code and the obsidian ecosystem(native API). This module handles the plugin lifecycle, event listening and handling, loading other modules, etc. 
+- **onlyever api** : This module contains code that is responsible for communicating with Atlas serverless functions. 
+- **settings tab** : This module contains code that registers features to the setting tab of onlyever_obsidian_sync plugin. 
+- **overwrite popup** : This module contains code that shows overwrite popup when an overwrite condtion is met. 
+- **file collection** : This is a module contains the following submodules with their own responsibilities:
+    - **file manager**: Uses Obsidaian native API to access the vault and the files within the vault.
+    - **file processor**: Parent to file parser. Validates and provides required notes for file parser to parse.
+    - **file parser**: Performs all necessary parsing needed to create a valid payload for onlyever api module to use. 
 
-### For DEVS
-- Check out [Documentation of Main](core/main).
+### 👨‍💻 For DEVS
+- Check out [Documentation of Main](core/main.rmd).
 - Check out [Documentation of File manager](core/file-manager).
 - Check out [Documentation of File processor](core/file-processor).
 - Check out [Documentation of File parser](core/file-parser).
@@ -53,35 +136,50 @@ This topic deals with breaking down the internals of the plugin.
 - Check out [Documentation of Settings tab](core/file-settings-tab).
 - Check out [Documentation of Overwrite modal](core/file-overwrite-modal).
 
-# Onlyever sync mechanism
-## Plugin function
-Heres the general flow of how a marked file is treated.
+---
+
+## Plugin sync mechanism
 ![Onlyever obsidian plugin dfd](images/Onlyever-obsidian-sync-syncMech.svg)
+<div style="margin-bottom: 12px"/>
+Heres the general flow of how a marked file is treated. When a valid event is fired. Respective functions are called. The flow of all the functions are relatively same, the only thing that is different is how many files are affected by the event. <br/>
 
-### For COLLABORATORS
-**When a valid event is fired. Respective functions are called. The flow of all the functions are relatively same, the only thing that is different is how many files are affected by the event. Read more about [events and functions]().**
-  1. Get note content.
-  2. Identify all markdown internal link. These are links to other notes (Syntax: `[[Other-markdown-note]`) and remote urls of wikipedia and youtube (Syntax `[Alias](url)`).
-  3. Identify all images (Embeded images with the syntax `![[Image name]]`).
-  4. For all identified images, upload them to a AWS s3 bucket and capture generated url.
-  5. Replace all instances of identified images syntax with new syntax. `![Image name](/bucket url)` in the content.
-  6. Parse the content to convert all markdown internal links to Onlyever internal links. Syntax : `[[alias|title|slug|index]]`.
-  7. The above steps, step 5 and 6 generates other necessary attributes needed for making an sync request like : `banner_image`, `internal_links`, `headings`, `contents`, etc.
-  8. Parse content to json as requried in the request.
-  9. Make sync request.
+### 👨‍💼 For COLLABORATORS
+<ol>
+  <li>Get note content.</li>
+  <li>
+  Identify all markdown internal links,  links to other notes.(Syntax: `[[Other-markdown-note]]`) and remote URLs of Wikipedia and YouTube (Syntax: `[Alias](url)`).
+  </li>
+  <li>
+    Identify all embedded images with the syntax `![[Image name]]`.
+  </li>
+  <li>For all identified images:
+    <ul>
+      <li>Upload them to an AWS S3 bucket.</li>
+      <li>Capture the generated URL.</li>
+    </ul>
+  </li>
+  <li>
+  Replace all instances of identified images syntax with the new syntax: `![Image name](/bucket-url)` in the content.
+  </li>
+  <li>Parse the content to convert all markdown internal links to Onlyever internal links. ( Syntax: `[[alias|title|slug|index]]` )
+  </li>
+  <li>The above steps (5 and 6) generate other necessary attributes needed for making a sync request like: `banner_image`, `internal_links`, `headings`, `contents`, etc.
+  </li>
+  <li>Parse content to JSON as required in the request.</li>
+  <li>Make sync request.</li>
+</ol>
+Read more about [events and functions]().
 
 
-### For DEVS
+### 👨‍💻 For DEVS
 
+---
 
-## Atlas function
+## Atlas sync mechanism
 Heres a breakdown of the 'syncNotes' function in Atlas app services.
 ![Onlyever obsidian Atlas function](images/Onlyever-obsidian-sync-syncFunction.svg)
 
+### 👨‍💼 For COLLABORATORS
 
-### For COLLABORATORS
+### 👨‍💻 For DEVS
 
-### For DEVS -->
-
-
-# Hello
