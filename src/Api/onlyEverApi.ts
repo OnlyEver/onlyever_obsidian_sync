@@ -1,5 +1,4 @@
 import axios from "axios";
-import { App } from "obsidian";
 import {OeToast} from "../OeToast";
 
 interface ApiData {
