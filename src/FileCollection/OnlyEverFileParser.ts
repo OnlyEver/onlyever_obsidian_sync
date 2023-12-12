@@ -103,8 +103,7 @@ class OnlyEverFileParser {
 	async parseFileToOeGlobalSourceJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
 		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
-		console.log('parseFileToOEglobalSOurceJson');
-		const {content, internalLinks} = await this.parseInternalLinks(
+		const {content, internalLinks, bannerImageUrl} = await this.parseInternalLinks(
 			contentsWithoutFlag,
 			parent,
 			apiToken
@@ -114,7 +113,7 @@ class OnlyEverFileParser {
 
 		return {
 			title: file.basename,
-			banner_image: this.imageUrls.length > 0 ? this.imageUrls[0] : '',
+			banner_image: bannerImageUrl,
 			slug: `ob-${file.stat.ctime}`,
 			content: JSON.stringify(listOfSection),
 			description: "Obsidian vault",
@@ -266,7 +265,8 @@ class OnlyEverFileParser {
 	 */
 	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string): Promise<{
 		content: string,
-		internalLinks: OeInternalLink[]
+		internalLinks: OeInternalLink[],
+		bannerImageUrl: string|null
 	}> {
 
 		const siblingObj: { [key: string]: Stat } = {};
@@ -275,6 +275,7 @@ class OnlyEverFileParser {
 
 		let match;
 		let index = 0;
+		let bannerImageUrl = null;
 		const internalLinks: OeInternalLink[] = [];
 		const linksInMdFile: string[] = [];
 		const oeCustomLinks: string[] = [];
@@ -290,11 +291,19 @@ class OnlyEverFileParser {
 
 
 		const internalImageMarkDownLink = await Promise.all(
-			[...content.matchAll(internalImageLink)].map(async (m) => ({
-				'originalAlias': `![[${m[1]}]]`,
-				'internalImageLink': internalImageLink,
-				'newAlias': `![${m[1]}](${await this.getFileUrl(m[1], siblingObj, apiToken)})`
-			}))
+			[...content.matchAll(internalImageLink)].map(async (m, index) => {
+				const url = await this.getImageUrl(m[1], siblingObj, apiToken);
+
+				if (index === 0) {
+					bannerImageUrl = url;
+				}
+
+				return {
+					'originalAlias': `![[${m[1]}]]`,
+					'internalImageLink': internalImageLink,
+					'newAlias': `![${m[1]}](${url})`
+				};
+			})
 		);
 
 		for (const replacement of [...internalImageMarkDownLink]) {
@@ -340,10 +349,10 @@ class OnlyEverFileParser {
 
 		content = this.replaceLinksInMdWithOeCustomLink(content, linksInMdFile, oeCustomLinks);
 
-		return {content, internalLinks};
+		return {content, internalLinks, bannerImageUrl};
 	}
 
-	async getFileUrl(filePath: string, siblings: { [key: string]: Stat }, apiToken: null | string) {
+	async getImageUrl(filePath: string, siblings: { [key: string]: Stat }, apiToken: null | string) {
 		const files = this.app.vault.getFiles();
 		let fileDetails = {};
 
@@ -361,7 +370,7 @@ class OnlyEverFileParser {
 
 		}
 
-		return await this.uploadFile(fileDetails as TFile, apiToken);
+		return await this.uploadFile(fileDetails as TFile, apiToken)
 	}
 
 	async uploadFile(file: TFile, apiToken: null | string) {

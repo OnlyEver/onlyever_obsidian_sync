@@ -95,28 +95,21 @@ class OnlyEverApi {
 		try {
 			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
 
-			return axios({
-					method: "post",
-					url: endpoint,
-					headers: {
-						"Content-Type": "application/json",
-					},
-					data: data,
-				}).then((res) => {
-					if ((res?.data as ApiData).success) {
-						return res.data.filePath;
-					} else {
-						new OeToast(
-							"Notes sync failed. Please ensure you have correct plugin token in the settings."
-						);
-					}
+			const response =  await axios.post(endpoint, data)
 
-					return;
-				}).catch((err)=>{
-					new OeToast('Unable to sync file images');
-				})
-		}catch (e){
-			new OeToast('Syncing image failed');
+			if(response.status === 200 && response.data.success){
+				return response.data.filePath as string;
+			}
+
+			throw new Error('Unable to sync file images.');
+		}catch (error){
+			let message = "Unable to sync file images.";
+
+			if (error["code"] === "ERR_NETWORK") {
+				message = "Failed to sync image. Please ensure you have internet connection.";
+			}
+
+			new OeToast(message)
 		}
 	}
 }

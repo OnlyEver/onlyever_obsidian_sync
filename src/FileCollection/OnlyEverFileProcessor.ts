@@ -35,7 +35,7 @@ class OnlyEverFileProcessor {
 
 		for (const file of files) {
 			processedFiles.push(
-				await this.fileParser.parseFileToOeGlobalSourceJson(file, file?.parent, this.settings.apiToken)
+				await this.fileParser.parseFileToOeGlobalSourceJson(file, file?.parent, this.apiToken)
 			);
 		}
 
@@ -61,7 +61,7 @@ class OnlyEverFileProcessor {
 			if(!this.isValid()){ return false }
 
 			processedFiles.push(
-				await this.fileParser.parseFileToOeGlobalSourceJson(file, file?.parent, this.settings.apiToken)
+				await this.fileParser.parseFileToOeGlobalSourceJson(file, file?.parent, this.apiToken)
 			);
 			
 			await this.onlyEverApi.syncFiles(processedFiles);
