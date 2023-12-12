@@ -1,0 +1,103 @@
+name: Build obsidian plugin
+
+on:
+  push:
+    branches: [ dev ]
+
+  workflow_dispatch:
+
+env:
+  PLUGIN_NAME: The-Only-Ever-Plugin # Change this to the name of your plugin-id folder
+
+jobs:
+  build:
+    permissions: write-all
+
+    runs-on: ubuntu-latest
+
+    environment: env-for-buildci
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+      AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+      S3_BUCKET: ${{secrets.S3_BUCKET}}
+      S3_REGION: ${{secrets.S3_REGION}}
+
+    strategy:
+      matrix:
+        node-version: [ 17.x ]
+
+    steps:
+      -   name: Check if branch is dev
+          id: check_branch
+          run: echo "Branch is ${{ github.ref }}"
+      -   name: Delete existing tag and release
+          id: delete_existing_release
+          if: startsWith(github.ref, 'refs/heads/dev')
+          run: |
+            curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/dev-build" || true
+            curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/dev-build" || true
+      -   name: Checkout codes
+          uses: actions/checkout@v2
+          with:
+            lfs: true
+            submodules: recursive
+      -   name: Checkout LFS
+          run: git lfs checkout
+      -   name: Use Node.js ${{ matrix.node-version }}
+          uses: actions/setup-node@v2
+          with:
+            node-version: ${{ matrix.node-version }}
+      -   run: npm install
+      -   run: npm run build
+      -   name: Create Release
+          id: create_release
+          uses: actions/create-release@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            VERSION: ${{ github.ref }}
+            AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+            AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+            S3_BUCKET: ${{secrets.S3_BUCKET}}
+            S3_REGION: ${{secrets.S3_REGION}}
+          with:
+            tag_name: ${{ github.ref }}
+            release_name: ${{ github.ref }}
+            draft: false
+            prerelease: false
+      -   name: Upload main.js
+          id: upload-main
+          uses: actions/upload-release-asset@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+            AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+            S3_BUCKET: ${{secrets.S3_BUCKET}}
+            S3_REGION: ${{secrets.S3_REGION}}
+          with:
+            upload_url: ${{ steps.create_release.outputs.upload_url }}
+            asset_path: ./main.js
+            asset_name: main.js
+            asset_content_type: text/javascript
+      -   name: Upload manifest.json
+          id: upload-manifest
+          uses: actions/upload-release-asset@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          with:
+            upload_url: ${{ steps.create_release.outputs.upload_url }}
+            asset_path: ./manifest.json
+            asset_name: manifest.json
+            asset_content_type: application/json
+      -   name: Upload styles.css
+          id: upload-css
+          uses: actions/upload-release-asset@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          with:
+            upload_url: ${{ steps.create_release.outputs.upload_url }}
+            asset_path: ./styles.css
+            asset_name: styles.css
+            asset_content_type: text/css
