@@ -31,7 +31,7 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 		let validityElement: ExtraButtonComponent;
 
 		const debouncedTokenVerification  = debounce((value: string)=>{
-			this.onlyEverApi.validateApiToken(value).then((result)=>{
+			this.onlyEverApi.validateApiToken(value).then(async (result)=>{
 				this.plugin.settings.tokenValidity = null
 				this.plugin.settings.userId = null
 
@@ -45,8 +45,10 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 					errorElement.addClass("error");
 					errorElement.innerText = value.length > 0 ? "The PLUGIN TOKEN is incorrect." : "";
 				}
+
+				await this.plugin.saveSettings()
 			})
-		}, 500, true)
+		}, 150, true)
 
 
 		new Setting(containerEl)

@@ -22,7 +22,7 @@ class OnlyEverFileProcessor {
 	/*
 	 * Syncs all marked files in vault
 	 */
-	async processMarkedFiles() {
+	async processMarkedFiles(setting: OnlyEverSettings) {
 		const files = await this.fileParser.getSyncableFiles();
 		const processedFiles: object[] = [];
 
@@ -35,19 +35,17 @@ class OnlyEverFileProcessor {
 
 		for (const file of files) {
 			processedFiles.push(
-				await this.fileParser.parseFileToOeGlobalSourceJson(file, file?.parent, this.apiToken)
+				await this.fileParser.parseFileToOeGlobalSourceJson(setting, file, file?.parent, this.apiToken)
 			);
 		}
 
-		await this.onlyEverApi.syncFiles(processedFiles);
-
-		return true;
+		return await this.onlyEverApi.syncFiles(processedFiles);
 	}
 
 	/*
 	 * Syncs active marked file in vault
 	 */
-	async processSingleFile(file: null | TFile = null) {
+	async processSingleFile(setting: OnlyEverSettings, file: null | TFile = null) {
 		file = file ?? this.app.workspace.getActiveFile()
 		const processedFiles: object[] = [];
 
@@ -58,16 +56,12 @@ class OnlyEverFileProcessor {
 		}
 
 		if (await this.fileParser.fileHasSyncFlag(file)) {
-			if(!this.isValid()){ return false }
+            if(!this.isValid()){ return false }
 
-			processedFiles.push(
-				await this.fileParser.parseFileToOeGlobalSourceJson(file, file?.parent, this.apiToken)
-			);
-			
-			await this.onlyEverApi.syncFiles(processedFiles);
+            processedFiles.push(await this.fileParser.parseFileToOeGlobalSourceJson(setting, file, file?.parent, this.apiToken));
 
-			return true;
-		}
+            return await this.onlyEverApi.syncFiles(processedFiles);
+        }
 
 		return false
 	}

@@ -93,7 +93,7 @@ class OnlyEverApi {
 	 *
 	 * @returns
 	 */
-	async syncImages(data:object){
+	async syncImages(data: object) {
 		try {
 			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
 

@@ -4,6 +4,7 @@ import {
 	MarkdownAndImageInputPayloadMap,
 	MarkdownAndRemoteUrlMap,
 	OeImageInputPayload,
+    OnlyEverSettings,
 	OeInternalLink,
 	OeSection,
 	Siblings,
@@ -102,17 +103,24 @@ class OnlyEverFileParser {
 	/**
 	 * Parse to source list object format.
 	 *
+	 * @param setting
 	 * @param file TFile
 	 * @param parent
 	 * @param apiToken
 	 *
 	 * @returns Promise<object>
 	 */
-	async parseFileToOeGlobalSourceJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
-		const fileCache = this.app.metadataCache.getFileCache(file);
-		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
+	async parseFileToOeGlobalSourceJson(setting: OnlyEverSettings, file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
+        const fileCache = this.app.metadataCache.getFileCache(file);
+        const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
+
+		if (!setting.userId) {
+            new OeToast('User identification failed. Please verify your token.');
+            throw new Error('User identification failed. Please verify your token.');
+		}
 
 		const {content, internalLinks, bannerImageUrl} = await this.parseInternalLinks(
+			setting.userId,
 			contentsWithoutFlag,
 			parent,
 			apiToken,
@@ -124,7 +132,7 @@ class OnlyEverFileParser {
 		return {
 			title: file.basename,
 			banner_image: bannerImageUrl,
-			slug: `ob-${file.stat.ctime}`,
+			slug: `${setting.userId}-${file.stat.ctime}`,
 			content: JSON.stringify(listOfSection),
 			description: "Obsidian vault",
 			heading: listOfH1,
@@ -135,7 +143,8 @@ class OnlyEverFileParser {
 				sub_category: 'obsidian'
 			},
 			fileCtime: file.stat.ctime,
-			fileMtime: file.stat.mtime
+			fileMtime: file.stat.mtime,
+            filePath: file.path,
 		};
 	}
 
@@ -268,13 +277,14 @@ class OnlyEverFileParser {
 	/**
 	 * Update the internal links related to wiki, YouTube and obsidian with [title|alias|index|source] format
 	 *
+	 * @param userId
 	 * @param content
 	 * @param parent
 	 * @param apiToken
 	 * @param fileCache
 	 *
 	 */
-	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string, fileCache: CachedMetadata | null): Promise<{
+	async parseInternalLinks(userId: string, content: string, parent: null | TFolder, apiToken: null | string, fileCache: CachedMetadata | null): Promise<{
 		content: string,
 		internalLinks: OeInternalLink[],
 		bannerImageUrl: string | null
@@ -283,7 +293,7 @@ class OnlyEverFileParser {
 		const siblingObj: Siblings = {};
 		const linkRegex = /\[(.*?)]\((https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\)|\[\[(.*?)]]|\b(https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\b/g;
 
-		let match;
+		let match;fileCache: CachedMetadata | null
 		let index = 0;
 		let bannerImageUrl = null;
 		let bannerImageKey = '';
@@ -363,7 +373,7 @@ class OnlyEverFileParser {
 					alias = splitValues[1];
 				}
 
-				const objectId = `ob-${await this.getFileCtime(filePath, siblingObj)}`;
+				const objectId = `${userId}-${await this.getFileCtime(filePath, siblingObj)}`;
 				url = objectId;
 				title = objectId;
 				source = 'obsidian';
@@ -531,7 +541,6 @@ class OnlyEverFileParser {
 
 		return fragmentedContent.join('');
 	}
-
 
 	async getImageBase64AsInputPayload(imagePath: string, allFiles: TFile[]): Promise<OeImageInputPayload> {
 		const imageAsFile = allFiles.find((file) => file.path.includes(imagePath));

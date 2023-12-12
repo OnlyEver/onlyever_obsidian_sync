@@ -13,8 +13,8 @@ class OnlyEverFileManager {
 		this.fileProcessor = new OnlyEverFileProcessor(this.app, settings);
 	}
 
-	async onActiveFileSaveAction() {
-		this.fileProcessor.processSingleFile();
+	async onActiveFileSaveAction(settings:OnlyEverSettings) {
+		this.fileProcessor.processSingleFile(settings);
 	}
 }
 

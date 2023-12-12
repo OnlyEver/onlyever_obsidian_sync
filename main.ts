@@ -27,7 +27,7 @@ export default class OnlyEverPlugin extends Plugin {
 		this.scanVault();
 		this.registerAllEvents();
 
-		await this.oeFileManager.fileProcessor.processMarkedFiles();
+		await this.oeFileManager.fileProcessor.processMarkedFiles(this.settings);
 
 		this.scheduledSync();
 		this.addSettingTab(new OnlyEverSettingsTab(this.app, this));
@@ -64,7 +64,7 @@ export default class OnlyEverPlugin extends Plugin {
 			id: "sync-all-obsidian-sync-true-files",
 			name: "Sync Notes",
 			callback: () => {
-				this.oeFileManager.fileProcessor.processMarkedFiles();
+				this.oeFileManager.fileProcessor.processMarkedFiles(this.settings);
 			},
 		});
 	}
@@ -99,7 +99,7 @@ export default class OnlyEverPlugin extends Plugin {
 		const syncIntervalMs = 60 * 60 * 1000;
 
 		this.settings.syncInterval = setInterval(() => {
-			this.oeFileManager.fileProcessor.processMarkedFiles();
+			this.oeFileManager.fileProcessor.processMarkedFiles(this.settings);
 			this.saveSettings();
 		}, syncIntervalMs);
 	}
@@ -110,7 +110,7 @@ export default class OnlyEverPlugin extends Plugin {
 	private registerAllEvents() {
 
 		const debouncedSync = debounce(() => {
-			this.oeFileManager.fileProcessor.processSingleFile(this.previousTab)
+			this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
 		}, 3200, true)
 
 		/*
@@ -119,7 +119,7 @@ export default class OnlyEverPlugin extends Plugin {
 		this.registerEvent(
 			// @ts-ignore
 			this.app.workspace.on("layout-ready", () => {
-				this.oeFileManager.fileProcessor.processMarkedFiles().then();
+				this.oeFileManager.fileProcessor.processMarkedFiles(this.settings).then();
 			})
 		);
 
@@ -138,21 +138,19 @@ export default class OnlyEverPlugin extends Plugin {
 		 */
 		this.registerEvent(
 			this.app.vault.on("rename", () => {
-				this.oeFileManager.onActiveFileSaveAction().then();
+				this.oeFileManager.onActiveFileSaveAction(this.settings).then();
 			})
 		);
 
 		/*
 		 * Registers and handles note save event
 		 */
-		const saveCommandDefinition = (this.app as any).commands?.commands?.[
-			"editor:save-file"
-		];
+		const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
 		const save = saveCommandDefinition?.callback;
 
 		if (typeof save === "function") {
 			saveCommandDefinition.callback = async () => {
-				this.oeFileManager.onActiveFileSaveAction().then();
+				this.oeFileManager.onActiveFileSaveAction(this.settings).then();
 			};
 		}
 
@@ -162,7 +160,7 @@ export default class OnlyEverPlugin extends Plugin {
 					const prev = this.previousTab;
 					if(this.wasEdited[prev.name]){
 						debouncedSync.cancel()
-						this.oeFileManager.fileProcessor.processSingleFile(this.previousTab)
+						this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
 
 						this.previousTab = this.app.workspace.getActiveFile()
 						this.wasEdited[prev.name] = false
