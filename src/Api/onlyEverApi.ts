@@ -1,6 +1,6 @@
 import axios, {AxiosResponse} from "axios";
 import {OeToast} from "../OeToast";
-import {MarkdownAndImageInputPayloadMap, MarkdownAndRemoteUrlMap} from "../interfaces";
+import {OeSyncResponseData, MarkdownAndImageInputPayloadMap, MarkdownAndRemoteUrlMap} from "../interfaces";
 
 interface ApiData {
 	success: boolean;
@@ -19,44 +19,40 @@ class OnlyEverApi {
 	 * Syncs Multiple file with only ever atlas
 	 *
 	 * @param files
+	 * @param canOverwrite
 	 *
 	 * @return void
 	 */
-	async syncFiles(files: object[]) {
+	async syncFiles(files: object[], canOverwrite = false) : Promise<OeSyncResponseData | false> {
 		try {
 			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
 
-			if (files.length > 0) {
-				axios({
-					method: "post",
-					url: endpoint,
-					headers: {
-						"Content-Type": "application/json",
-					},
-					data: files,
+			if(files.length > 0){
+				const response: AxiosResponse  =  await axios.post(endpoint, {
+					files: files,
+					canOverwrite: canOverwrite
 				})
-					.then((res) => {
-						if ((res?.data as ApiData).success) {
-							new OeToast(res.data.message);
-						} else {
-							new OeToast("Notes sync failed. Please ensure you have correct plugin token in the settings.");
-						}
-					})
-					.catch((err) => {
-						let errorMessage =
-							"Notes sync failed. Please ensure you have correct plugin token in the settings.";
 
-						if (err["code"] === "ERR_NETWORK") {
-							errorMessage =
-								"Notes sync failed. Please ensure you have internet connection.";
-						}
+				if(response.status === 200 && response.data.success){
+					new OeToast(response.data.message)
 
-						new OeToast(errorMessage);
-					});
+					return response.data as OeSyncResponseData
+				}
+
+				throw new Error('Note sync failed. Please ensure you have correct plugin token in the settings.')
 			}
-		} catch (err) {
-			new OeToast(`Failed to sync file`);
-			throw err
+
+			return false
+		} catch (error) {
+			let message =  error.message;
+
+			if(error['code'] === 'ERR_NETWORK'){
+				message = "Note sync failed. Please ensure you have internet connection."
+			}
+
+			new OeToast(message)
+
+			return false;
 		}
 	}
 
@@ -101,30 +97,6 @@ class OnlyEverApi {
 
 			if(response.status === 200 && response.data.success){
 				return response.data.filePath as string;
-			}
-
-			throw new Error('Unable to sync file images.');
-		}catch (error){
-			let message = "Unable to sync file images.";
-
-			if (error["code"] === "ERR_NETWORK") {
-				message = "Failed to sync image. Please ensure you have internet connection.";
-			}
-
-			new OeToast(message)
-
-			throw error
-		}
-	}
-
-	async syncAllImages(files: MarkdownAndImageInputPayloadMap): Promise<MarkdownAndRemoteUrlMap> {
-		try {
-			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
-
-			const response: AxiosResponse =  await axios.post(endpoint, {files: files})
-
-			if(response.status === 200 && response.data.success){
-				return response.data.mapMarkdownRepresentationAndRemoteUrl as MarkdownAndRemoteUrlMap
 			}
 
 			throw new Error('Unable to sync file images.');
