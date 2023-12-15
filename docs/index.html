@@ -1568,10 +1568,10 @@ hover:border-color: #d35400;
 <div id="preface" class="section level1">
 <h1>Preface</h1>
 <div class="alert alert-warning">
-<p>⚠️: This document is underconstruction and is subject to change.</p>
+<p>⚠️ This document is under construction and is subject to change.</p>
 </div>
 <div class="alert alert-important">
-<p>💬: This document is designed to offer fundamental insights into the
+<p>💬 This document is designed to offer fundamental insights into the
 workings of the system. We’ve crafted the documentation with simplicity
 in mind, ensuring that individuals with non-technical backgrounds can
 grasp the essence of the system. This is why, some technical
@@ -1582,25 +1582,126 @@ diverges from precise technical terminology and the norm.</p>
 </div>
 <div id="terminologies" class="section level2">
 <h2>Terminologies</h2>
+<table>
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td><strong>👨‍💼 COLLABORATORS:</strong></td>
+<td>Non developers associates and maintainers of this project.</td>
+</tr>
+<tr class="even">
+<td><strong>👨‍💻 DEVS:</strong></td>
+<td>Developers that have access to the code base.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="reading-this-document" class="section level2">
+<h2>Reading this document</h2>
+<p>Each topic if necessary starts with a image of the procedure being
+described.</p>
+<table>
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td><strong>👨‍💼 For COLLABORATORS: </strong></td>
+<td>We recommend using the image and the summary below (if exists) the
+to understand the topic. You can skip reading the ‘For Developers’
+section.</td>
+</tr>
+<tr class="even">
+<td><strong>👨‍💻 For DEVS:</strong></td>
+<td>All classes and methods will be documented as necessary. All classes
+and methods in this document will be embedded links that redirect to the
+documentation of said module. Please read predecissing sections marked
+‘For Collaborators’ as well.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</div>
+</div>
+<div id="getting-started" class="section level1">
+<h1>Getting Started</h1>
+<div id="plugin-setup" class="section level2">
+<h2>Plugin setup</h2>
+<p>For end users. Install this plugin from the ‘Community Plugins’
+section in Obsidian.</p>
+</div>
+<div id="dev-build-setup" class="section level2">
+<h2>Dev build setup</h2>
+<p>You might want to change plugin version for unforeseen reasons (like
+testing). You can use Obsidian BRAT plugin to install or change versions
+based on your need.</p>
+<div id="setup" class="section level3">
+<h3>Setup</h3>
 <ul>
-<li><strong>👨‍💼 COLLABORATORS:</strong> Non devlopers associates and
-maintainers of this project. Can skip reading <code>For DEVS</code>
-sections.</li>
-<li><strong>👨‍💻 DEVS:</strong> Developers that have access to the code
-base and require to know details, please read the entire document
-including <code>For COLLABORATORS</code> sections.</li>
+<li>Install and enable BRAT from the community plugins store.</li>
+<li>Goto settings -&gt; BRAT -&gt; Add beta plugin with frozen
+version</li>
+<li>Add this repository url in the first field. (<a href="https://github.com/OnlyEver/onlyever_obsidian_sync" class="uri">https://github.com/OnlyEver/onlyever_obsidian_sync</a>)</li>
+<li>Add latest / testable version in the second field.</li>
+<li>Click on Add plugin.</li>
+<li>Wait for a toast message</li>
+</ul>
+<div class="alert alert-info">
+<p>❕You need to remove older frozen version of this plugin to add newer
+version.</p>
+</div>
+</div>
+<div id="account-setup" class="section level3">
+<h3>Account setup</h3>
+<ul>
+<li>Copy Obsidian token from the Only Ever mobile application.</li>
+<li>Navigate to the settings tab.</li>
+<li>Navigate to ‘Obsidain’ and view / generate token.</li>
+<li>Copy the token.</li>
+<li>Assuming you have the OnlyEver Obsidian Sync plugin installed.</li>
+<li>On Obsidian app, click on settings.</li>
+<li>Click on Only Ever.</li>
+<li>Paste copied token to the API token field.</li>
+<li>Wait for validation message.</li>
 </ul>
 </div>
-<div id="how-to-read-this-document" class="section level2">
-<h2>How to read this document</h2>
+</div>
+<div id="prerequisite" class="section level2">
+<h2>Prerequisite</h2>
+<p>The prerequisite for this project are:</p>
 <ul>
-<li>Each topic if necessary starts with a image of the procedure being
-described.</li>
-<li><strong>👨‍💼 For COLLABORATORS: </strong> we recommend using the image
-and the summary below (if exists) the to understand the topic.</li>
-<li><strong>👨‍💻 For DEVS:</strong> all classes and methods will be
-documented as necessary. All classes and methods in this document will
-be embeded links that redirect to the documentation of said module.</li>
+<li>Obsidian application</li>
+<li>node: 17</li>
+</ul>
+</div>
+<div id="installation-and-run" class="section level2">
+<h2>Installation and Run</h2>
+<p>Please make sure you have obsidian installed in your system before
+you begin with the installation process:</p>
+<ul>
+<li><p>Create an obsidian vault.</p></li>
+<li><p>Open the folder where your obsidian vault is located. Open
+<code>.obsidian</code> folder, then open <code>plugins</code>
+folder.</p></li>
+<li><p>Clone your repo to the <code>plugins</code> folder with the
+following command:</p>
+<pre><code>  git clone git@github.com:OnlyEver/onlyever_obsidian_sync.git</code></pre>
+<p>OR</p>
+<pre><code>  git clone https://github.com/OnlyEver/onlyever_obsidian_sync.git</code></pre></li>
+<li><p>Run <code>npm install</code> to install node packages.</p></li>
+<li><p>Run <code>npm run dev</code> to compile your plugin from
+<code>main.ts</code> to <code>main.js</code>.</p></li>
+<li><p>Open your obsidian application. In the
+<code>community plugin</code> tab of <code>settings</code>, reload the
+installed plugin section to see the ‘Obsidian-Onlyever-plugin’.</p></li>
+<li><p>Turn on the toggle button for
+‘Obsidian-Onlyever-plugin’.</p></li>
+<li><p>Obsidian plugin is now installed on your obsidian application and
+you may start syncing you notes.</p></li>
 </ul>
 <hr />
 </div>

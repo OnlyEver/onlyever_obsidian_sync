@@ -1,0 +1,9 @@
+#Events
+
+## Overview
+|Action|Event|No. of notes affected
+|---|---|---|
+|User opens obsidian| `layout-ready` | N (All notes with `oe_sync: true`) |
+|User presses `Ctrl+s` | `editor:save-file` | 1 (Active note) |
+|User editor note|`modify`| 1 (Note that was edited) |
+|User renames note| `rename` |  1 (Note that was renamed) |
