@@ -140,7 +140,9 @@ class FileParser {
 			source_category: {
 				category: 'notes',
 				sub_category: 'obsidian'
-			}
+			},
+			fileCtime: file.stat.ctime,
+			fileMtime: file.stat.mtime
 		};
 	}
 
