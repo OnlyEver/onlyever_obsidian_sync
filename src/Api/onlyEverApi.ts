@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Notice, App } from "obsidian";
+import {OeToast} from "../OeToast";
 
 interface ApiData {
 	success: boolean;
@@ -8,11 +8,9 @@ interface ApiData {
 }
 
 class OnlyEverApi {
-	app: App;
 	apiToken: string;
 
 	constructor(apiToken: string) {
-		this.app = app;
 		this.apiToken = apiToken;
 	}
 
@@ -38,11 +36,9 @@ class OnlyEverApi {
 				})
 					.then((res) => {
 						if ((res?.data as ApiData).success) {
-							new Notice(`Synced file successfully.`, 400);
+							new OeToast(`Synced file successfully.`);
 						} else {
-							new Notice(
-								"Notes sync failed. Please ensure you have correct plugin token in the settings."
-							);
+							new OeToast("Notes sync failed. Please ensure you have correct plugin token in the settings.");
 						}
 					})
 					.catch((err) => {
@@ -54,11 +50,11 @@ class OnlyEverApi {
 								"Notes sync failed. Please ensure you have internet connection.";
 						}
 
-						new Notice(errorMessage);
+						new OeToast(errorMessage);
 					});
 			}
 		} catch (err) {
-			new Notice(`Failed to sync file`);
+			new OeToast(`Failed to sync file`);
 		}
 	}
 
@@ -86,11 +82,11 @@ class OnlyEverApi {
 				})
 				.catch((err) => {
 					if (err["code"] === "ERR_NETWORK") {
-						new Notice(
+						new OeToast(
 							"Token verification failed. Please ensure you have internet connection."
 						);
 
-						return {'status':null};
+						return {'status':false};
 					}
 
 					return {'status':false};
@@ -120,21 +116,21 @@ class OnlyEverApi {
 					data: data,
 				}).then((res) => {
 					if ((res?.data as ApiData).success) {
-						new Notice(`Synced file successfully`, 400);
+						new OeToast(`Synced file successfully`);
 
 						return res.data.filePath;
 					} else {
-						new Notice(
+						new OeToast(
 							"Notes sync failed. Please ensure you have correct plugin token in the settings."
 						);
 					}
 
 					return;
 				}).catch((err)=>{
-					new Notice('Unable to sync file images');
+					new OeToast('Unable to sync file images');
 				})
 		}catch (e){
-			new Notice('Syncing image failed');
+			new OeToast('Syncing image failed');
 		}
 	}
 }

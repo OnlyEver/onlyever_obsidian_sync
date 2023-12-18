@@ -1,18 +1,22 @@
-import {App, Notice, TAbstractFile, TFile} from "obsidian";
+import {App, TFile} from "obsidian";
 import {FileParser} from "./FileParser";
 import {OnlyEverApi} from "../Api/onlyEverApi";
+import {OeToast} from "../OeToast";
+import {ObsidianOnlyeverSettings} from "../interfaces";
 
 class FileProcessor {
 	app: App;
 	fileParser: FileParser;
 	onlyEverApi: OnlyEverApi;
+	settings: ObsidianOnlyeverSettings;
 	apiToken: string;
 
-	constructor(app: App, apiToken: string) {
+	constructor(app: App, settings: ObsidianOnlyeverSettings) {
 		this.app = app;
 		this.fileParser = new FileParser(app);
-		this.apiToken = apiToken;
-		this.onlyEverApi = new OnlyEverApi(apiToken);
+		this.settings = settings
+		this.apiToken = settings.apiToken;
+		this.onlyEverApi = new OnlyEverApi(this.apiToken);
 	}
 
 	/*
@@ -22,10 +26,12 @@ class FileProcessor {
 		const files = await this.fileParser.getSyncableFiles();
 		const processedFiles: object[] = [];
 
-		if (files.length == 0) {
-			new Notice("No files in the vault");
+		if (files.length === 0) {
+			new OeToast("No files marked for sync in the vault.");
 			return false;
 		}
+
+		if(!this.isValid()){ return false }
 
 		for (const file of files) {
 			processedFiles.push(
@@ -46,18 +52,21 @@ class FileProcessor {
 		const processedFiles: object[] = [];
 
 		if (!file) {
-			new Notice("No note is open.");
-
-			return;
+			new OeToast("No note is open.");
+			return false;
 		}
 
 		if (await this.fileParser.fileHasSyncFlag(file)) {
+			if(!this.isValid()){ return false }
+
 			processedFiles.push(
 				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
 			);
 			
-			await this.onlyEverApi.syncFiles(processedFiles);
+			return await this.onlyEverApi.syncFiles(processedFiles);
 		}
+
+		return false
 	}
 
 	/*
@@ -96,8 +105,25 @@ class FileProcessor {
 			return;
 		}
 
-		new Notice("You need to open a note to mark it.");
+		new OeToast("You need to open a note to mark it.");
 		return;
+	}
+
+	isValid(){
+		if(this.settings.apiToken.length === 0){
+			new OeToast(`Note sync failed. Please ensure you've entered the API token.`)
+			return false;
+		}
+		if(this.settings.tokenValidity === null){
+			new OeToast(`Note sync failed. Please ensure you've validated the API token.`)
+			return false;
+		}
+		if(!this.settings.tokenValidity){
+			new OeToast(`Note sync failed. Please use a valid API token.`)
+			return false;
+		}
+
+		return true;
 	}
 }
 
