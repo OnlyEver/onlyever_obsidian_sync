@@ -19,21 +19,18 @@ class OnlyEverApi {
 	 * Syncs Multiple file with only ever atlas
 	 *
 	 * @param files
+	 * @param canOverwrite
 	 *
 	 * @return void
 	 */
-	async syncFiles(files: object[]) {
+	async syncFiles(files: object[], canOverwrite = false) : Promise<OeSyncResponseData | false> {
 		try {
 			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
 
-			if (files.length > 0) {
-				axios({
-					method: "post",
-					url: endpoint,
-					headers: {
-						"Content-Type": "application/json",
-					},
-					data: files,
+			if(files.length > 0){
+				const response: AxiosResponse  =  await axios.post(endpoint, {
+					files: files,
+					canOverwrite: canOverwrite
 				})
 					.then((res) => {
 						if ((res?.data as ApiData).success) {

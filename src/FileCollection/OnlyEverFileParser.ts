@@ -107,6 +107,7 @@ class OnlyEverFileParser {
 	 * @param file TFile
 	 * @param parent
 	 * @param apiToken
+	 * @param renameEvent
 	 *
 	 * @returns Promise<object>
 	 */
@@ -145,6 +146,11 @@ class OnlyEverFileParser {
 			fileCtime: file.stat.ctime,
 			fileMtime: file.stat.mtime,
             filePath: file.path,
+			// // @ts-ignore
+			// ...(renameEvent ? { renamed: true } : {})
+			// },
+			// filePath: file.path,
+			// fileCtime: file.stat.ctime,
 		};
 	}
 
