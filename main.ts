@@ -108,11 +108,6 @@ export default class MyPlugin extends Plugin {
 	 * Registers event and functionality on event
 	 */
 	private registerAllEvents() {
-
-		const debouncedSyncOnModify  = debounce((file: TAbstractFile)=>{
-			this.manager.fileProcessor.processSingleFile(file as TFile)
-		}, 30000, true)
-
 		/*
 		 * Registers and handles initial Obsidian open event
 		 */
@@ -128,7 +123,7 @@ export default class MyPlugin extends Plugin {
 		 */
 		this.registerEvent(
 			this.app.vault.on("modify", (file) => {
-				debouncedSyncOnModify(file)
+				this.manager.fileProcessor.processSingleFile(file as TFile)
 			})
 		);
 
