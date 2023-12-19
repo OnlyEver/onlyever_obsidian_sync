@@ -1,28 +1,9 @@
 import {App, TFile, TFolder, arrayBufferToBase64} from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
+import {OeInternalLink, OeSection, Stat} from "../interfaces";
+import {OeToast} from "../OeToast";
 
-interface OeSection {
-	title: string
-	content: string;
-	heading_level: number;
-	children: OeSection[]
-}
-interface OeInternalLink{
-	slug: string
-	id: string|null
-}
-
-interface Stat {
-	stat: {
-		ctime: number,
-		mtime: number,
-		size: number,
-	},
-	// extension: string,
-	path: string
-}
-
-class FileParser {
+class OnlyEverFileParser {
 	app: App;
 
 	//This is for filtering.
@@ -119,16 +100,17 @@ class FileParser {
 	 *
 	 * @returns Promise<object>
 	 */
-	async parseToJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
+	async parseFileToOeGlobalSourceJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
 		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
+		console.log('parseFileToOEglobalSOurceJson');
 		const {content, internalLinks} = await this.parseInternalLinks(
 			contentsWithoutFlag,
 			parent,
 			apiToken
 		);
 
-		const {listOfSection, listOfH1} = this.parseMarkdownContentToOeJsonStructure(content);
+		const {listOfSection, listOfH1} = this.parseContentToOeContentJson(content);
 
 		return {
 			title: file.basename,
@@ -155,7 +137,7 @@ class FileParser {
 	 *
 	 * @returns {OeSection[], string[]}
 	 */
-	parseMarkdownContentToOeJsonStructure(markdownAsString: string): { listOfSection: OeSection[]; listOfH1: string[] } {
+	parseContentToOeContentJson(markdownAsString: string): { listOfSection: OeSection[]; listOfH1: string[] } {
 		// listOfH1 is the final list of h1 ordered headings
 		const listOfH1: string[] = []
 
@@ -188,8 +170,8 @@ class FileParser {
 				// So we would not want to treat '# something' as a heading
 				if (currentSection) {
 					currentSection.content += line + '\n';
-				}else{
-					initialContent =  initialContent + line + '\n';
+				} else {
+					initialContent = initialContent + line + '\n';
 				}
 			} else {
 				if (headingMatch) {
@@ -200,7 +182,7 @@ class FileParser {
 					const [, hashes, title] = headingMatch;
 					const heading_level = hashes.length;
 
-					if(heading_level === 1){
+					if (heading_level === 1) {
 						// Maintaining a list of H1s
 						listOfH1.push(title);
 					}
@@ -258,7 +240,7 @@ class FileParser {
 			}
 		}
 
-		if(initialContent){
+		if (initialContent) {
 			const initialSection: OeSection = {
 				title: '',
 				content: initialContent,
@@ -284,9 +266,10 @@ class FileParser {
 		content: string,
 		internalLinks: OeInternalLink[]
 	}> {
+
 		const siblingObj: { [key: string]: Stat } = {};
-		const linkRegex = /\[(.*?)\]\((https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\)|\[\[(.*?)\]\]|\b(https:\/\/(?:[\w]+\.wikipedia\.org\/wiki\/[^\s]+|www\.youtube\.com\/watch\?v=[^\s]+))\b/g;
-		const internalImageLink = /\!\[\[([^|\]]+)+[|]?(.*?)\]\]/gi;
+		const linkRegex = /\[(.*?)]\((https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\)|\[\[(.*?)]]|\b(https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\b/g;
+		const internalImageLink = /!\[\[([^|\]]+)+[|]?(.*?)]]/gi;
 
 		let match;
 		let index = 0;
@@ -303,12 +286,15 @@ class FileParser {
 			}
 		}
 
+
 		const internalImageMarkDownLink = await Promise.all(
 			[...content.matchAll(internalImageLink)].map(async (m) => ({
-				originalAlias: `![[${m[1]}]]`, internalImageLink,
-				newAlias: `![${m[1]}](${await this.getFileUrl(m[1], siblingObj, apiToken)})`
+				'originalAlias': `![[${m[1]}]]`,
+				'internalImageLink': internalImageLink,
+				'newAlias': `![${m[1]}](${await this.getFileUrl(m[1], siblingObj, apiToken)})`
 			}))
 		);
+
 
 		for (const replacement of [...internalImageMarkDownLink]) {
 			const {originalAlias, newAlias} = replacement;
@@ -345,9 +331,9 @@ class FileParser {
 				source = 'obsidian';
 			}
 
-			internalLinks.push( {id: null, slug: title} );
+			internalLinks.push({id: null, slug: title});
 			linksInMdFile.push(urlWithOrWithoutAliasInMdFile);
-			oeCustomLinks.push( `[[${title}|${alias}|${index}|${source}]]` );
+			oeCustomLinks.push(`[[${title}|${alias}|${index}|${source}]]`);
 			index = internalLinks.length;
 		}
 
@@ -378,25 +364,24 @@ class FileParser {
 	}
 
 	async uploadFile(file: TFile, apiToken: null | string) {
-		try {
-			if (apiToken) {
-				const onlyEverApi = new OnlyEverApi(apiToken)
-				const content = await this.app.vault.readBinary(file);
-				const base64 = arrayBufferToBase64(content);
-				const filePath = file.path.replace(/ /g, '+');
+		if (apiToken && apiToken.length > 0) {
+			const onlyEverApi = new OnlyEverApi(apiToken)
+			const content = await this.app.vault.readBinary(file);
+			const base64 = arrayBufferToBase64(content);
+			const filePath = file.path.replace(/ /g, '+');
 
-				const input = {
-					Body: base64,
-					Key: filePath,
-					ContentEncoding: 'base64',
-					ContentType: `image/${file.extension}`,
-				}
-
-				return await onlyEverApi.syncImages(input);
+			const input = {
+				Body: base64,
+				Key: filePath,
+				ContentEncoding: 'base64',
+				ContentType: `image/${file.extension}`,
 			}
-		} catch (err) {
-			console.log('error', err);
+
+			return await onlyEverApi.syncImages(input);
 		}
+
+		new OeToast('Image sync failed. No API token.')
+		throw new Error('API Token is null');
 	}
 
 	/***
@@ -510,4 +495,4 @@ class FileParser {
 	}
 }
 
-export {FileParser};
+export {OnlyEverFileParser};

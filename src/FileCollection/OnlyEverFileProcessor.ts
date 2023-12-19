@@ -1,19 +1,19 @@
 import {App, TFile} from "obsidian";
-import {FileParser} from "./FileParser";
+import {OnlyEverFileParser} from "./OnlyEverFileParser";
 import {OnlyEverApi} from "../Api/onlyEverApi";
 import {OeToast} from "../OeToast";
-import {ObsidianOnlyeverSettings} from "../interfaces";
+import {OnlyEverSettings} from "../interfaces";
 
-class FileProcessor {
+class OnlyEverFileProcessor {
 	app: App;
-	fileParser: FileParser;
+	fileParser: OnlyEverFileParser;
 	onlyEverApi: OnlyEverApi;
-	settings: ObsidianOnlyeverSettings;
+	settings: OnlyEverSettings;
 	apiToken: string;
 
-	constructor(app: App, settings: ObsidianOnlyeverSettings) {
+	constructor(app: App, settings: OnlyEverSettings) {
 		this.app = app;
-		this.fileParser = new FileParser(app);
+		this.fileParser = new OnlyEverFileParser(app);
 		this.settings = settings
 		this.apiToken = settings.apiToken;
 		this.onlyEverApi = new OnlyEverApi(this.apiToken);
@@ -22,7 +22,7 @@ class FileProcessor {
 	/*
 	 * Syncs all marked files in vault
 	 */
-	async processFiles() {
+	async processMarkedFiles() {
 		const files = await this.fileParser.getSyncableFiles();
 		const processedFiles: object[] = [];
 
@@ -35,7 +35,7 @@ class FileProcessor {
 
 		for (const file of files) {
 			processedFiles.push(
-				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
+				await this.fileParser.parseFileToOeGlobalSourceJson(file, file?.parent, this.settings.apiToken)
 			);
 		}
 
@@ -53,6 +53,7 @@ class FileProcessor {
 
 		if (!file) {
 			new OeToast("No note is open.");
+
 			return false;
 		}
 
@@ -60,10 +61,12 @@ class FileProcessor {
 			if(!this.isValid()){ return false }
 
 			processedFiles.push(
-				await this.fileParser.parseToJson(file, file?.parent, this.onlyEverApi.apiToken)
+				await this.fileParser.parseFileToOeGlobalSourceJson(file, file?.parent, this.settings.apiToken)
 			);
 			
-			return await this.onlyEverApi.syncFiles(processedFiles);
+			await this.onlyEverApi.syncFiles(processedFiles);
+
+			return true;
 		}
 
 		return false
@@ -114,10 +117,12 @@ class FileProcessor {
 			new OeToast(`Note sync failed. Please ensure you've entered the API token.`)
 			return false;
 		}
+
 		if(this.settings.tokenValidity === null){
 			new OeToast(`Note sync failed. Please ensure you've validated the API token.`)
 			return false;
 		}
+
 		if(!this.settings.tokenValidity){
 			new OeToast(`Note sync failed. Please use a valid API token.`)
 			return false;
@@ -127,4 +132,4 @@ class FileProcessor {
 	}
 }
 
-export { FileProcessor };
+export { OnlyEverFileProcessor };

@@ -36,7 +36,7 @@ class OnlyEverApi {
 				})
 					.then((res) => {
 						if ((res?.data as ApiData).success) {
-							new OeToast(`Synced file successfully.`);
+							new OeToast(res.data.message);
 						} else {
 							new OeToast("Notes sync failed. Please ensure you have correct plugin token in the settings.");
 						}
@@ -60,39 +60,27 @@ class OnlyEverApi {
 
 	/**
 	 * Validate api token
-	 *
-	 * @return ?string
 	 */
-	async validateApiToken(token: string) {
+	async validateApiToken(token: string): Promise<{ status: boolean, userId: null | string }> {
 		try {
 			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/verifyToken?pluginName=obsidian&token=${token}`;
-			return axios({
-				method: "post",
-				url: endpoint,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			})
-				.then((res) => {
-					if ((res?.data as ApiData)?.success) {
-						return {'status':true};
-					}
+			const response = await axios.post(endpoint);
 
-					return {'status':true};
-				})
-				.catch((err) => {
-					if (err["code"] === "ERR_NETWORK") {
-						new OeToast(
-							"Token verification failed. Please ensure you have internet connection."
-						);
+			if (response.status === 200 && response.data.success) {
+				return {status: true, userId: response.data.userId}
+			}
 
-						return {'status':false};
-					}
+			throw new Error('Token validation failed.')
+		} catch (error) {
+			if (error?.code && error.code === 'ERR_NETWORK') {
+				new OeToast(
+					"Token verification failed. Please ensure you have internet connection."
+				);
+			}
 
-					return {'status':false};
-				});
-		} catch (err) {
-			return {'status':false}
+			console.error("Token validation failed.");
+
+			return {status: false, userId: null}
 		}
 	}
 
@@ -116,8 +104,6 @@ class OnlyEverApi {
 					data: data,
 				}).then((res) => {
 					if ((res?.data as ApiData).success) {
-						new OeToast(`Synced file successfully`);
-
 						return res.data.filePath;
 					} else {
 						new OeToast(

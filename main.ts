@@ -1,23 +1,22 @@
-import {Plugin, addIcon, debounce, TAbstractFile, TFile} from "obsidian";
-import { FileManager as Manager } from "./src/FileCollection/FileManager";
-import { ObsidianOnlyeverSettingsTab } from "./src/ObsidianOnlyeverSettingsTab";
+import {Plugin, addIcon, TFile, debounce} from "obsidian";
+import { OnlyEverFileManager as Manager } from "./src/FileCollection/OnlyEverFileManager";
+import { OnlyEverSettingsTab } from "./src/OnlyEverSettingsTab";
+import {OnlyEverSettings} from "./src/interfaces";
 
-interface ObsidianOnlyeverSettings {
-	apiToken: string;
-	tokenValidity: boolean | null;
-	syncInterval: any;
-}
 
-const DEFAULT_SETTINGS: ObsidianOnlyeverSettings = {
+const DEFAULT_SETTINGS: OnlyEverSettings = {
 	apiToken: "",
 	tokenValidity: false,
 	syncInterval: null,
+	userId: null,
 };
 
 
-export default class MyPlugin extends Plugin {
-	settings: ObsidianOnlyeverSettings;
-	manager: Manager;
+export default class OnlyEverPlugin extends Plugin {
+	settings: OnlyEverSettings;
+	oeFileManager: Manager;
+	previousTab: null | TFile = null;
+	wasEdited: any = {}
 
 	async onload() {
 		this.loadIcons();
@@ -28,10 +27,11 @@ export default class MyPlugin extends Plugin {
 		this.scanVault();
 		this.registerAllEvents();
 
-		await this.manager.fileProcessor.processFiles();
+		await this.oeFileManager.fileProcessor.processMarkedFiles();
 
 		this.scheduledSync();
-		this.addSettingTab(new ObsidianOnlyeverSettingsTab(this.app, this));
+		this.addSettingTab(new OnlyEverSettingsTab(this.app, this));
+		this.previousTab = this.app.workspace.getActiveFile()
 	}
 
 	async loadSettings() {
@@ -56,7 +56,7 @@ export default class MyPlugin extends Plugin {
 			id: "add-obsidian-sync-true-in-frontmatter",
 			name: "Mark for Sync",
 			callback: () => {
-				this.manager.fileProcessor.markActiveFileForSync();
+				this.oeFileManager.fileProcessor.markActiveFileForSync();
 			},
 		});
 
@@ -64,7 +64,7 @@ export default class MyPlugin extends Plugin {
 			id: "sync-all-obsidian-sync-true-files",
 			name: "Sync Notes",
 			callback: () => {
-				this.manager.fileProcessor.processSingleFile();
+				this.oeFileManager.fileProcessor.processMarkedFiles();
 			},
 		});
 	}
@@ -74,14 +74,14 @@ export default class MyPlugin extends Plugin {
 			"highlighter",
 			"Mark for Sync",
 			() => {
-				this.manager.fileProcessor.markActiveFileForSync();
+				this.oeFileManager.fileProcessor.markActiveFileForSync();
 			}
 		);
 		tickIconEl.addClass("my-plugin-ribbon-class");
 	}
 
 	private scanVault() {
-		this.manager = new Manager(app, this.getSettingsValue());
+		this.oeFileManager = new Manager(this.app, this.settings);
 	}
 
 	private loadIcons(): void {
@@ -99,7 +99,7 @@ export default class MyPlugin extends Plugin {
 		const syncIntervalMs = 60 * 60 * 1000;
 
 		this.settings.syncInterval = setInterval(() => {
-			this.manager.fileProcessor.processFiles();
+			this.oeFileManager.fileProcessor.processMarkedFiles();
 			this.saveSettings();
 		}, syncIntervalMs);
 	}
@@ -108,13 +108,18 @@ export default class MyPlugin extends Plugin {
 	 * Registers event and functionality on event
 	 */
 	private registerAllEvents() {
+
+		const debouncedSync = debounce(() => {
+			this.oeFileManager.fileProcessor.processSingleFile(this.previousTab)
+		}, 500, true)
+
 		/*
 		 * Registers and handles initial Obsidian open event
 		 */
 		this.registerEvent(
 			// @ts-ignore
 			this.app.workspace.on("layout-ready", () => {
-				this.manager.fileProcessor.processFiles().then();
+				this.oeFileManager.fileProcessor.processMarkedFiles().then();
 			})
 		);
 
@@ -122,8 +127,8 @@ export default class MyPlugin extends Plugin {
 		 * Registers and handles active note edit event
 		 */
 		this.registerEvent(
-			this.app.vault.on("modify", (file) => {
-				this.manager.fileProcessor.processSingleFile(file as TFile)
+			this.app.vault.on("modify", () => {
+				debouncedSync()
 			})
 		);
 
@@ -132,7 +137,7 @@ export default class MyPlugin extends Plugin {
 		 */
 		this.registerEvent(
 			this.app.vault.on("rename", () => {
-				this.manager.onActiveFileSaveAction().then();
+				this.oeFileManager.onActiveFileSaveAction().then();
 			})
 		);
 
@@ -146,8 +151,23 @@ export default class MyPlugin extends Plugin {
 
 		if (typeof save === "function") {
 			saveCommandDefinition.callback = async () => {
-				this.manager.onActiveFileSaveAction().then();
+				this.oeFileManager.onActiveFileSaveAction().then();
 			};
 		}
+
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', () => {
+				if(this.previousTab){
+					const prev = this.previousTab;
+					if(this.wasEdited[prev.name]){
+						debouncedSync.cancel()
+						this.oeFileManager.fileProcessor.processSingleFile(this.previousTab)
+
+						this.previousTab = this.app.workspace.getActiveFile()
+						this.wasEdited[prev.name] = false
+					}
+				}
+			})
+		);
 	}
 }

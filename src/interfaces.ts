@@ -26,11 +26,11 @@ export interface ApiResponse {
     fileToken: string;
 }
 
-export interface ObsidianOnlyeverSettings {
+export interface OnlyEverSettings {
     apiToken: string;
     tokenValidity: boolean | null;
     syncInterval: any;
-    userId: string;
+    userId: string | null;
 }
 
 export interface ReplacementNote {

@@ -6,14 +6,14 @@ import {
 	TextComponent,
 } from "obsidian";
 import {OnlyEverApi} from "./Api/onlyEverApi";
-import MyPlugin from "../main";
+import OnlyEverPlugin from "../main";
 
-export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class OnlyEverSettingsTab extends PluginSettingTab {
+	plugin: OnlyEverPlugin;
 	onlyEverApi: OnlyEverApi;
 	onlyEverPermanent: OnlyEverApi;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: OnlyEverPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 		this.onlyEverApi = new OnlyEverApi(this.plugin.settings.apiToken);
@@ -32,10 +32,17 @@ export class ObsidianOnlyeverSettingsTab extends PluginSettingTab {
 
 		const debouncedTokenVerification  = debounce((value: string)=>{
 			this.onlyEverApi.validateApiToken(value).then((result)=>{
-				if (result["status"]) {
+				this.plugin.settings.tokenValidity = null
+				this.plugin.settings.userId = null
+
+				console.log('result')
+				console.log(result)
+				if (result.status) {
 					validityElement.setIcon("checkIcon");
 					errorElement.innerText = "";
-				} else if (result["status"] === false) {
+					this.plugin.settings.tokenValidity = result.status
+					this.plugin.settings.userId = result.userId
+				} else if (!result["status"]) {
 					validityElement.setIcon("crossIcon");
 					errorElement.addClass("error");
 					errorElement.innerText = value.length > 0 ? "The PLUGIN TOKEN is incorrect." : "";
