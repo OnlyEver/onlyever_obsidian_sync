@@ -35,8 +35,6 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 				this.plugin.settings.tokenValidity = null
 				this.plugin.settings.userId = null
 
-				console.log('result')
-				console.log(result)
 				if (result.status) {
 					validityElement.setIcon("checkIcon");
 					errorElement.innerText = "";

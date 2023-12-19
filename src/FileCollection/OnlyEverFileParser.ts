@@ -1,6 +1,13 @@
 import {App, TFile, TFolder, arrayBufferToBase64} from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
-import {OeInternalLink, OeSection, Stat} from "../interfaces";
+import {
+	MarkdownAndImageInputPayloadMap,
+	MarkdownAndRemoteUrlMap,
+	OeImageInputPayload,
+	OeInternalLink,
+	OeSection, Siblings,
+	Stat
+} from "../interfaces";
 import {OeToast} from "../OeToast";
 
 class OnlyEverFileParser {
@@ -266,19 +273,21 @@ class OnlyEverFileParser {
 	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string): Promise<{
 		content: string,
 		internalLinks: OeInternalLink[],
-		bannerImageUrl: string|null
+		bannerImageUrl: string | null
 	}> {
 
-		const siblingObj: { [key: string]: Stat } = {};
+		const siblingObj: Siblings = {};
 		const linkRegex = /\[(.*?)]\((https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\)|\[\[(.*?)]]|\b(https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\b/g;
 		const internalImageLink = /!\[\[([^|\]]+)+[|]?(.*?)]]/gi;
 
 		let match;
 		let index = 0;
 		let bannerImageUrl = null;
+
 		const internalLinks: OeInternalLink[] = [];
 		const linksInMdFile: string[] = [];
 		const oeCustomLinks: string[] = [];
+		const markdownRepresentationAndInputPayloadMap: MarkdownAndImageInputPayloadMap = {};
 
 		if (parent?.children) {
 			for (const sibling of Object.values(parent?.children)) {
@@ -289,26 +298,31 @@ class OnlyEverFileParser {
 			}
 		}
 
-
-		const internalImageMarkDownLink = await Promise.all(
-			[...content.matchAll(internalImageLink)].map(async (m, index) => {
-				const url = await this.getImageUrl(m[1], siblingObj, apiToken);
-
-				if (index === 0) {
-					bannerImageUrl = url;
+		await Promise.all(
+			[...content.matchAll(internalImageLink)].map(async (match) => {
+				if (match) {
+					const markdownRepresentation = match[0]
+					const imagePathAsSeenInAlias = match[1];
+					markdownRepresentationAndInputPayloadMap[markdownRepresentation] = await this.getImageBase64AsInputPayload(imagePathAsSeenInAlias, siblingObj);
 				}
-
-				return {
-					'originalAlias': `![[${m[1]}]]`,
-					'internalImageLink': internalImageLink,
-					'newAlias': `![${m[1]}](${url})`
-				};
 			})
 		);
 
-		for (const replacement of [...internalImageMarkDownLink]) {
-			const {originalAlias, newAlias} = replacement;
-			content = content.replace(originalAlias, newAlias);
+		if (Object.keys(markdownRepresentationAndInputPayloadMap).length > 0) {
+			const markdownRepresentationWithRemoteUrlMap: MarkdownAndRemoteUrlMap = await this.getMarkdownRepresentationWithRemoteUrlMap(markdownRepresentationAndInputPayloadMap, apiToken);
+
+			[...content.matchAll(internalImageLink)].map((match) => {
+				if (match) {
+					const markdownRepresentation = match[0]
+					const imagePath = match[1];
+					const remoteUrl = markdownRepresentationWithRemoteUrlMap[markdownRepresentation];
+					const newMarkdown = `![${imagePath}](${remoteUrl})`;
+
+					content = content.replace(markdownRepresentation, newMarkdown)
+				}
+			})
+
+			bannerImageUrl = Object.values(markdownRepresentationWithRemoteUrlMap)[0];
 		}
 
 		while ((match = linkRegex.exec(content)) !== null) {
@@ -502,6 +516,51 @@ class OnlyEverFileParser {
 		fragmentedContent.push(content);
 
 		return fragmentedContent.join('');
+	}
+
+
+	async getImageBase64AsInputPayload(imagePath: string, siblings: Siblings): Promise<OeImageInputPayload> {
+		let file = this.getSiblingImageIfExist(imagePath, siblings)
+
+		if(!(file instanceof TFile)){
+			file = this.app.vault.getAbstractFileByPath(imagePath);
+		}
+
+		if(file instanceof TFile){
+			const fileAsBinary = await this.app.vault.readBinary(file);
+			const base64 = arrayBufferToBase64(fileAsBinary);
+
+			return {
+				Body: base64,
+				Key: imagePath,
+				ContentEncoding: 'base64',
+				ContentType: `image/${file.extension}`,
+			}
+		}
+
+		new OeToast(`Error. ${imagePath}, is not a valid file.`)
+
+		throw new Error('Invalid image url.')
+	}
+
+	async getMarkdownRepresentationWithRemoteUrlMap(mapMarkdownRepresentationAndRemoteUrl: MarkdownAndImageInputPayloadMap, apiToken: string | null): Promise<MarkdownAndRemoteUrlMap> {
+		if (apiToken) {
+			const onlyEverApi = new OnlyEverApi(apiToken)
+
+			return await onlyEverApi.syncAllImages(mapMarkdownRepresentationAndRemoteUrl);
+		}
+
+		throw new Error("Error invalid token.")
+	}
+
+	getSiblingImageIfExist(imagePath: string, siblings: Siblings){
+		if (Object.keys(siblings).contains(imagePath)) {
+			const siblingPath = siblings[imagePath].path;
+			imagePath = siblingPath === '/' ? imagePath : `${siblingPath}/${imagePath}`;
+
+		}
+
+		return this.app.vault.getAbstractFileByPath(imagePath)
 	}
 }
 

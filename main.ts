@@ -111,7 +111,7 @@ export default class OnlyEverPlugin extends Plugin {
 
 		const debouncedSync = debounce(() => {
 			this.oeFileManager.fileProcessor.processSingleFile(this.previousTab)
-		}, 500, true)
+		}, 3200, true)
 
 		/*
 		 * Registers and handles initial Obsidian open event
@@ -127,8 +127,9 @@ export default class OnlyEverPlugin extends Plugin {
 		 * Registers and handles active note edit event
 		 */
 		this.registerEvent(
-			this.app.vault.on("modify", () => {
-				debouncedSync()
+			this.app.vault.on("modify", ()=>{
+				debouncedSync.cancel()
+				debouncedSync();
 			})
 		);
 

@@ -62,3 +62,35 @@ export interface OeSyncResponseData{
     newFiles : string;
     replacementNotes : ReplacementNote[];
 }
+
+/**
+ * Represents a mapping between markdown representations and remote URLs.
+ *
+ * @example
+ * // Example Usage:
+ * const map: MarkdownAndRemoteUrlMap = {
+ *   "![[image1]]": "https://example.com/image1.jpg",
+ *   "![[image2]]": "https://example.com/image2.jpg",
+ *   // Add more entries as needed
+ * }
+ */
+export interface MarkdownAndRemoteUrlMap {
+	[markdownImageLink: string]: string;
+}
+
+export interface OeImageInputPayload{
+	Body: string
+	Key: string
+	ContentEncoding: string
+	ContentType: string
+}
+export interface MarkdownAndImageInputPayloadMap{
+	[markdownAlias: string] : OeImageInputPayload
+}
+
+export interface  SyncImagesResponse extends  OeResponse{
+	mapMarkdownRepresentationAndRemoteUrl : MarkdownAndRemoteUrlMap
+}
+export interface Siblings {
+    [key: string]: Stat
+}
