@@ -32,14 +32,14 @@ jobs:
             - name: Checkout codes
               uses: actions/checkout@v2
               with:
-                lfs: true
-                submodules: recursive
+                  lfs: true
+                  submodules: recursive
             - name: Checkout LFS
               run: git lfs checkout
             - name: Use Node.js ${{ matrix.node-version }}
               uses: actions/setup-node@v2
               with:
-                node-version: ${{ matrix.node-version }}
+                  node-version: ${{ matrix.node-version }}
             - run: npm install
             - run: npm run build
             - name: Create Release
