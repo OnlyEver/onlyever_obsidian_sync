@@ -283,6 +283,7 @@ class OnlyEverFileParser {
 		let match;
 		let index = 0;
 		let bannerImageUrl = null;
+		let bannerImageKey = '';
 
 		const internalLinks: OeInternalLink[] = [];
 		const linksInMdFile: string[] = [];
@@ -299,11 +300,15 @@ class OnlyEverFileParser {
 		}
 
 		await Promise.all(
-			[...content.matchAll(internalImageLink)].map(async (match) => {
+			[...content.matchAll(internalImageLink)].map(async (match, index) => {
 				if (match) {
 					const markdownRepresentation = match[0]
 					const imagePathAsSeenInAlias = match[1];
 					markdownRepresentationAndInputPayloadMap[markdownRepresentation] = await this.getImageBase64AsInputPayload(imagePathAsSeenInAlias, siblingObj);
+
+					if(index === 0){
+						bannerImageKey = markdownRepresentation
+					}
 				}
 			})
 		);
@@ -322,7 +327,7 @@ class OnlyEverFileParser {
 				}
 			})
 
-			bannerImageUrl = Object.values(markdownRepresentationWithRemoteUrlMap)[0];
+			bannerImageUrl = markdownRepresentationWithRemoteUrlMap[bannerImageKey];
 		}
 
 		while ((match = linkRegex.exec(content)) !== null) {
