@@ -9,6 +9,7 @@ import {
 	Stat
 } from "../interfaces";
 import {OeToast} from "../OeToast";
+import {canHaveJsDoc} from "tsutils";
 
 class OnlyEverFileParser {
 	app: App;
@@ -289,6 +290,7 @@ class OnlyEverFileParser {
 		const linksInMdFile: string[] = [];
 		const oeCustomLinks: string[] = [];
 		const markdownRepresentationAndInputPayloadMap: MarkdownAndImageInputPayloadMap = {};
+		const allFiles =  this.app.vault.getFiles();
 
 		if (parent?.children) {
 			for (const sibling of Object.values(parent?.children)) {
@@ -303,8 +305,8 @@ class OnlyEverFileParser {
 			[...content.matchAll(internalImageLink)].map(async (match, index) => {
 				if (match) {
 					const markdownRepresentation = match[0]
-					const imagePathAsSeenInAlias = match[1];
-					markdownRepresentationAndInputPayloadMap[markdownRepresentation] = await this.getImageBase64AsInputPayload(imagePathAsSeenInAlias, siblingObj);
+					const imageNameAsSeenInAlias = match[1];
+					markdownRepresentationAndInputPayloadMap[markdownRepresentation] = await this.getImageBase64AsInputPayload(imageNameAsSeenInAlias, allFiles);
 
 					if(index === 0){
 						bannerImageKey = markdownRepresentation
@@ -524,22 +526,18 @@ class OnlyEverFileParser {
 	}
 
 
-	async getImageBase64AsInputPayload(imagePath: string, siblings: Siblings): Promise<OeImageInputPayload> {
-		let file = this.getSiblingImageIfExist(imagePath, siblings)
+	async getImageBase64AsInputPayload(imagePath: string, allFiles: TFile[]): Promise<OeImageInputPayload> {
+		const imageAsFile = allFiles.find((file) => file.path.includes(imagePath));
 
-		if(!(file instanceof TFile)){
-			file = this.app.vault.getAbstractFileByPath(imagePath);
-		}
-
-		if(file instanceof TFile){
-			const fileAsBinary = await this.app.vault.readBinary(file);
+		if(imageAsFile){
+			const fileAsBinary = await this.app.vault.readBinary(imageAsFile);
 			const base64 = arrayBufferToBase64(fileAsBinary);
 
 			return {
 				Body: base64,
 				Key: imagePath,
 				ContentEncoding: 'base64',
-				ContentType: `image/${file.extension}`,
+				ContentType: `image/${imageAsFile.extension}`,
 			}
 		}
 
@@ -557,16 +555,6 @@ class OnlyEverFileParser {
 
 		throw new Error("Error invalid token.")
 	}
-
-	getSiblingImageIfExist(imagePath: string, siblings: Siblings){
-		if (Object.keys(siblings).contains(imagePath)) {
-			const siblingPath = siblings[imagePath].path;
-			imagePath = siblingPath === '/' ? imagePath : `${siblingPath}/${imagePath}`;
-
-		}
-
-		return this.app.vault.getAbstractFileByPath(imagePath)
-	}
 }
 
-export {OnlyEverFileParser};
+export {OnlyEverFileParser}
