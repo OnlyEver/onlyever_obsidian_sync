@@ -1,15 +1,15 @@
-import {App, TFile, TFolder, arrayBufferToBase64} from "obsidian";
+import {App, arrayBufferToBase64, CachedMetadata, EmbedCache, TFile, TFolder} from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
 import {
 	MarkdownAndImageInputPayloadMap,
 	MarkdownAndRemoteUrlMap,
 	OeImageInputPayload,
 	OeInternalLink,
-	OeSection, Siblings,
+	OeSection,
+	Siblings,
 	Stat
 } from "../interfaces";
 import {OeToast} from "../OeToast";
-import {canHaveJsDoc} from "tsutils";
 
 class OnlyEverFileParser {
 	app: App;
@@ -109,12 +109,14 @@ class OnlyEverFileParser {
 	 * @returns Promise<object>
 	 */
 	async parseFileToOeGlobalSourceJson(file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
+		const fileCache = this.app.metadataCache.getFileCache(file);
 		const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
 
 		const {content, internalLinks, bannerImageUrl} = await this.parseInternalLinks(
 			contentsWithoutFlag,
 			parent,
-			apiToken
+			apiToken,
+			fileCache
 		);
 
 		const {listOfSection, listOfH1} = this.parseContentToOeContentJson(content);
@@ -269,9 +271,10 @@ class OnlyEverFileParser {
 	 * @param content
 	 * @param parent
 	 * @param apiToken
+	 * @param fileCache
 	 *
 	 */
-	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string): Promise<{
+	async parseInternalLinks(content: string, parent: null | TFolder, apiToken: null | string, fileCache: CachedMetadata | null): Promise<{
 		content: string,
 		internalLinks: OeInternalLink[],
 		bannerImageUrl: string | null
@@ -279,18 +282,19 @@ class OnlyEverFileParser {
 
 		const siblingObj: Siblings = {};
 		const linkRegex = /\[(.*?)]\((https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\)|\[\[(.*?)]]|\b(https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\b/g;
-		const internalImageLink = /!\[\[([^|\]]+)+[|]?(.*?)]]/gi;
 
 		let match;
 		let index = 0;
 		let bannerImageUrl = null;
 		let bannerImageKey = '';
+		let embeddedImages: EmbedCache[] | undefined;
 
 		const internalLinks: OeInternalLink[] = [];
 		const linksInMdFile: string[] = [];
 		const oeCustomLinks: string[] = [];
 		const markdownRepresentationAndInputPayloadMap: MarkdownAndImageInputPayloadMap = {};
-		const allFiles =  this.app.vault.getFiles();
+		const allFiles = this.app.vault.getFiles();
+		const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp'];
 
 		if (parent?.children) {
 			for (const sibling of Object.values(parent?.children)) {
@@ -301,32 +305,35 @@ class OnlyEverFileParser {
 			}
 		}
 
-		await Promise.all(
-			[...content.matchAll(internalImageLink)].map(async (match, index) => {
-				if (match) {
-					const markdownRepresentation = match[0]
-					const imageNameAsSeenInAlias = match[1];
-					markdownRepresentationAndInputPayloadMap[markdownRepresentation] = await this.getImageBase64AsInputPayload(imageNameAsSeenInAlias, allFiles);
+		if (fileCache) {
+			embeddedImages = fileCache.embeds?.filter(embed => {
+				/* Returning file-embeds that end with image extension */
+				return imageExtensions.some(ext => embed.link.endsWith(ext));
+			});
 
-					if(index === 0){
-						bannerImageKey = markdownRepresentation
-					}
-				}
-			})
-		);
+			if (embeddedImages && embeddedImages.length > 0) {
+				await Promise.all(
+					embeddedImages.map(async (image, imgIndex) => {
+						const markdownRepresentation = image.original;
+						markdownRepresentationAndInputPayloadMap[markdownRepresentation] = await this.getImageBase64AsInputPayload(image.link, allFiles);
 
-		if (Object.keys(markdownRepresentationAndInputPayloadMap).length > 0) {
+						if (imgIndex === 0) {
+							bannerImageKey = markdownRepresentation;
+						}
+					})
+				);
+			}
+		}
+
+		if (Object.keys(markdownRepresentationAndInputPayloadMap).length > 0 && embeddedImages) {
 			const markdownRepresentationWithRemoteUrlMap: MarkdownAndRemoteUrlMap = await this.getMarkdownRepresentationWithRemoteUrlMap(markdownRepresentationAndInputPayloadMap, apiToken);
 
-			[...content.matchAll(internalImageLink)].map((match) => {
-				if (match) {
-					const markdownRepresentation = match[0]
-					const imagePath = match[1];
-					const remoteUrl = markdownRepresentationWithRemoteUrlMap[markdownRepresentation];
-					const newMarkdown = `![${imagePath}](${remoteUrl})`;
+			embeddedImages.forEach((embeddedImage: EmbedCache) => {
+				const imageAlt = embeddedImage.displayText || '';
+				const remoteUrl = markdownRepresentationWithRemoteUrlMap[embeddedImage.original];
+				const newMarkdown = `![${imageAlt}](${remoteUrl})`;
 
-					content = content.replace(markdownRepresentation, newMarkdown)
-				}
+				content = content.replace(embeddedImage.original, newMarkdown)
 			})
 
 			bannerImageUrl = markdownRepresentationWithRemoteUrlMap[bannerImageKey];
@@ -529,7 +536,7 @@ class OnlyEverFileParser {
 	async getImageBase64AsInputPayload(imagePath: string, allFiles: TFile[]): Promise<OeImageInputPayload> {
 		const imageAsFile = allFiles.find((file) => file.path.includes(imagePath));
 
-		if(imageAsFile){
+		if (imageAsFile) {
 			const fileAsBinary = await this.app.vault.readBinary(imageAsFile);
 			const base64 = arrayBufferToBase64(fileAsBinary);
 
@@ -541,7 +548,7 @@ class OnlyEverFileParser {
 			}
 		}
 
-		new OeToast(`Error. ${imagePath}, is not a valid file.`)
+		new OeToast(`Error. ${imagePath}, is not a valid file path`)
 
 		throw new Error('Invalid image url.')
 	}
