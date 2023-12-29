@@ -27,8 +27,6 @@ export default class OnlyEverPlugin extends Plugin {
 		this.scanVault();
 		this.registerAllEvents();
 
-		await this.oeFileManager.fileProcessor.processMarkedFiles(this.settings);
-
 		this.scheduledSync();
 		this.addSettingTab(new OnlyEverSettingsTab(this.app, this));
 		this.previousTab = this.app.workspace.getActiveFile()
@@ -104,15 +102,14 @@ export default class OnlyEverPlugin extends Plugin {
 		}, syncIntervalMs);
 	}
 
+	debouncedSync = debounce(() => {
+		this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
+	}, 3100, true)
+
 	/*
 	 * Registers event and functionality on event
 	 */
 	private registerAllEvents() {
-
-		const debouncedSync = debounce(() => {
-			this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
-		}, 3200, true)
-
 		/*
 		 * Registers and handles initial Obsidian open event
 		 */
@@ -128,8 +125,8 @@ export default class OnlyEverPlugin extends Plugin {
 		 */
 		this.registerEvent(
 			this.app.vault.on("modify", ()=>{
-				debouncedSync.cancel()
-				debouncedSync();
+				this.debouncedSync.cancel()
+				this.debouncedSync();
 			})
 		);
 
@@ -150,6 +147,7 @@ export default class OnlyEverPlugin extends Plugin {
 
 		if (typeof save === "function") {
 			saveCommandDefinition.callback = async () => {
+				this.debouncedSync.cancel()
 				this.oeFileManager.onActiveFileSaveAction(this.settings).then();
 			};
 		}
@@ -159,7 +157,7 @@ export default class OnlyEverPlugin extends Plugin {
 				if(this.previousTab){
 					const prev = this.previousTab;
 					if(this.wasEdited[prev.name]){
-						debouncedSync.cancel()
+						this.debouncedSync.cancel()
 						this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
 
 						this.previousTab = this.app.workspace.getActiveFile()
