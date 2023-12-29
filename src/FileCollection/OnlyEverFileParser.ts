@@ -293,7 +293,7 @@ class OnlyEverFileParser {
 		const siblingObj: Siblings = {};
 		const linkRegex = /\[(.*?)]\((https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\)|\[\[(.*?)]]|\b(https:\/\/(?:\w+\.wikipedia\.org\/wiki\/\S+|www\.youtube\.com\/watch\?v=\S+))\b/g;
 
-		let match;fileCache: CachedMetadata | null
+		let match;
 		let index = 0;
 		let bannerImageUrl = null;
 		let bannerImageKey = '';
