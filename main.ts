@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: OnlyEverSettings = {
 export default class OnlyEverPlugin extends Plugin {
 	settings: OnlyEverSettings;
 	oeFileManager: Manager;
+	activeTab: null | TFile = null;
 	previousTab: null | TFile = null;
 	wasEdited: any = {}
 
@@ -102,9 +103,15 @@ export default class OnlyEverPlugin extends Plugin {
 		}, syncIntervalMs);
 	}
 
+	/**
+	 * Note by @PG-Momik
+	 * Obsidian's default 'modify' event is 'throttled' not 'debounced'(As per my observation)
+	 * The event delay is 2 to 3 seconds.
+	 * So we set debounce interval to time greater than throttle interval.
+	 */
 	debouncedSync = debounce(() => {
-		this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
-	}, 3100, true)
+		this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.activeTab)
+	}, 3000, true)
 
 	/*
 	 * Registers event and functionality on event
@@ -147,7 +154,7 @@ export default class OnlyEverPlugin extends Plugin {
 
 		if (typeof save === "function") {
 			saveCommandDefinition.callback = async () => {
-				this.debouncedSync.cancel()
+				this.debouncedSync.cancel();
 				this.oeFileManager.onActiveFileSaveAction(this.settings).then();
 			};
 		}
