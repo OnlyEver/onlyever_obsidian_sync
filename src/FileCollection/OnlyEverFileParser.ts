@@ -1,10 +1,10 @@
-import {App, arrayBufferToBase64, CachedMetadata, EmbedCache, TFile, TFolder} from "obsidian";
+import {App, arrayBufferToBase64, CachedMetadata, EmbedCache, SectionCache, TFile, TFolder} from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
 import {
 	MarkdownAndImageInputPayloadMap,
 	MarkdownAndRemoteUrlMap,
 	OeImageInputPayload,
-    OnlyEverSettings,
+	OnlyEverSettings,
 	OeInternalLink,
 	OeSection,
 	Siblings,
@@ -101,18 +101,18 @@ class OnlyEverFileParser {
 	}
 
 	/**
-	 * Parse to source list object format.
+	 * Parse to global source object format.
 	 *
-	 * @param setting
+	 * @param setting OnlyEverSettings
 	 * @param file TFile
-	 * @param parent
-	 * @param apiToken
+	 * @param parent null | TFolder
+	 * @param apiToken null | string
 	 *
 	 * @returns Promise<object>
 	 */
 	async parseFileToOeGlobalSourceJson(setting: OnlyEverSettings, file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
         const fileCache = this.app.metadataCache.getFileCache(file);
-        const contentsWithoutFlag = await this.getContentsOfFileWithoutFlag(file);
+        const contentsWithoutFlag 		= await this.getContentsOfFileWithoutFlag(file);
 
 		if (!setting.userId) {
             new OeToast('User identification failed. Please verify your token.');
@@ -149,9 +149,9 @@ class OnlyEverFileParser {
 	}
 
 	/**
-	 * Returns array of object after parsing to our format.
+	 * Returns an array of objects after parsing to OE content format.
 	 *
-	 * IMPORTANT: Read code comments slow and carefully
+	 * IMPORTANT: Read code comments slowly and carefully
 	 *
 	 * @param markdownAsString string
 	 *
@@ -197,8 +197,8 @@ class OnlyEverFileParser {
 				if (headingMatch) {
 					// Inside the 'if condition', if the line is a heading.
 
-					// Code looks weird but headingMatch is an array that basically contains: [ # complete title, #, title];.
-					// So we're just voiding the 0 index and assigning the remaining 2 indexes to hashes and title.
+					// Code looks weird, but headingMatch is an array that basically contains: [ # complete title, #, title];.
+					// So we're just voiding 0th index and assigning the remaining 2 indexes to hashes and title.
 					const [, hashes, title] = headingMatch;
 					const heading_level = hashes.length;
 
@@ -251,8 +251,8 @@ class OnlyEverFileParser {
 					if (currentSection) {
 						// We're dealing with content that falls under a heading of any order
 						currentSection.content += line + '\n';
-					} else if (line.trim() !== '') {
-						// We're dealing with content that is does not fall under any heading.
+					} else{
+						// We're dealing with content that does not fall under any heading.
 						// Usually this is the case for when there's a paragraph before any heading in the note.
 						initialContent += line + '\n';
 					}
@@ -433,7 +433,7 @@ class OnlyEverFileParser {
 	}
 
 	/***
-	 * Returns ctime of file based on file path
+	 * Returns ctime of file based on filepath
 	 *
 	 * @return Promise<string>
 	 *
@@ -493,15 +493,19 @@ class OnlyEverFileParser {
 	}
 
 
-	/*
+	/**
 	 * Return title for wikipedia from url.
+	 *
+	 * @return string
 	 */
 	getTitleForWikipedia(url: string): string {
 		return <string>(url.split('/')).pop();
 	}
 
-	/*
+	/**
 	 * Return title for YouTube from url.
+	 *
+	 * @return string
 	 */
 	getTitleForYoutube(url: string): string {
 		const videoId = url.match(/v=([^&]+)/);
@@ -532,6 +536,7 @@ class OnlyEverFileParser {
 		}
 
 		/**
+		 * Note by: @PG-momik
 		 * Pushing var content to fragmentedContent because:
 		 * - var content has continuously been sliced and updated to contain contents after end index of each link,
 		 * - meaning at the end of the loop, it contains remaining string contents without any links,
