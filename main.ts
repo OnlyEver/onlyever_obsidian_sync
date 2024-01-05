@@ -27,8 +27,6 @@ export default class OnlyEverPlugin extends Plugin {
 		this.scanVault();
 		this.registerAllEvents();
 
-		await this.oeFileManager.fileProcessor.processMarkedFiles(this.settings);
-
 		this.scheduledSync();
 		this.addSettingTab(new OnlyEverSettingsTab(this.app, this));
 		this.previousTab = this.app.workspace.getActiveFile()
