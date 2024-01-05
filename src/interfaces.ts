@@ -94,3 +94,7 @@ export interface  SyncImagesResponse extends  OeResponse{
 export interface Siblings {
     [key: string]: Stat
 }
+
+export interface WasEditedMap{
+	[key: string]: boolean
+}
