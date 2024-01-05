@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: OnlyEverSettings = {
 export default class OnlyEverPlugin extends Plugin {
 	settings: OnlyEverSettings;
 	oeFileManager: Manager;
+	activeTab: null | TFile = null;
 	previousTab: null | TFile = null;
 	wasEdited: any = {}
 
@@ -29,7 +30,7 @@ export default class OnlyEverPlugin extends Plugin {
 
 		this.scheduledSync();
 		this.addSettingTab(new OnlyEverSettingsTab(this.app, this));
-		this.previousTab = this.app.workspace.getActiveFile()
+		this.previousTab = this.activeTab = this.app.workspace.getActiveFile()
 	}
 
 	async loadSettings() {
@@ -102,10 +103,15 @@ export default class OnlyEverPlugin extends Plugin {
 		}, syncIntervalMs);
 	}
 
+	/**
+	 * Note by @PG-Momik
+	 * Obsidian's default 'modify' event is 'throttled' not 'debounced'(As per my observation)
+	 * The event delay is 2 to 3 seconds.
+	 * So we set debounce interval to time greater than throttle interval.
+	 */
 	debouncedSync = debounce(() => {
-		console.log("OnlyEver delayed sync fired: ", new Date().toLocaleString());
-		this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
-	}, 3100, true)
+		this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.activeTab)
+	}, 3000, true)
 
 	/*
 	 * Registers event and functionality on event
@@ -124,13 +130,7 @@ export default class OnlyEverPlugin extends Plugin {
 		/*
 		 * Registers and handles active note edit event
 		 */
-		this.registerEvent(
-			this.app.vault.on("modify", ()=>{
-				console.log("Obsidian default modify event fired: ", new Date().toLocaleString());
-				this.debouncedSync.cancel()
-				this.debouncedSync();
-			})
-		);
+		this.registerEvent( this.app.vault.on("modify", this.debouncedSync) );
 
 		/*
 		 * Registers and handles vault's note rename event
@@ -158,17 +158,29 @@ export default class OnlyEverPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on('active-leaf-change', () => {
 				console.log("Tab change event fired: ", new Date().toLocaleString());
-				if(this.previousTab){
-					const prev = this.previousTab;
-					if(this.wasEdited[prev.name]){
-						this.debouncedSync.cancel()
-						this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
 
-						this.previousTab = this.app.workspace.getActiveFile()
-						this.wasEdited[prev.name] = false
-					}
+				if(this.isActualTabChanged()){
+					this.debouncedSync.cancel()
+					this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
+					this.previousTab = this.activeTab = this.app.workspace.getActiveFile()
+				}else{
+					this.debouncedSync.cancel()
 				}
 			})
 		);
+	}
+
+	/*
+	 * Note by @PG-Momik
+	 * Single Clicking item OR drag dropping items from sidebar is considered active-leaf-change.
+	 * So need to check if it's an actual active leaf change event or a false positive.
+	 * So we compare the file path of the supposed new active file and the actual previous file.
+	 *
+	 * @return boolean
+	 */
+	isActualTabChanged(): boolean {
+		const newActiveFile = this.app.workspace.getActiveFile();
+
+		return this.previousTab?.path !== newActiveFile?.path;
 	}
 }
