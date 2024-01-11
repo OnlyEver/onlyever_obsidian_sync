@@ -1,8 +1,7 @@
-import {Plugin, addIcon, TFile, debounce} from "obsidian";
+import { Plugin, addIcon, TFile, debounce } from "obsidian";
 import { OnlyEverFileManager as Manager } from "./src/FileCollection/OnlyEverFileManager";
 import { OnlyEverSettingsTab } from "./src/OnlyEverSettingsTab";
-import {OnlyEverSettings} from "./src/interfaces";
-
+import { OnlyEverSettings, WasEditedMap } from "./src/interfaces";
 
 const DEFAULT_SETTINGS: OnlyEverSettings = {
 	apiToken: "",
@@ -15,9 +14,11 @@ const DEFAULT_SETTINGS: OnlyEverSettings = {
 export default class OnlyEverPlugin extends Plugin {
 	settings: OnlyEverSettings;
 	oeFileManager: Manager;
-	activeTab: null | TFile = null;
-	previousTab: null | TFile = null;
-	wasEdited: any = {}
+
+	previousTab: TFile;
+	activeTab: TFile;
+	wasEdited: WasEditedMap = {}
+	timeout = 2500;
 
 	async onload() {
 		this.loadIcons();
@@ -30,7 +31,7 @@ export default class OnlyEverPlugin extends Plugin {
 
 		this.scheduledSync();
 		this.addSettingTab(new OnlyEverSettingsTab(this.app, this));
-		this.previousTab = this.app.workspace.getActiveFile()
+		this.setPreviousAndActiveTab();
 	}
 
 	async loadSettings() {
@@ -44,10 +45,6 @@ export default class OnlyEverPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 		this.scanVault();
-	}
-
-	getSettingsValue() {
-		return this.settings.apiToken;
 	}
 
 	private loadHotKeys() {
@@ -104,74 +101,108 @@ export default class OnlyEverPlugin extends Plugin {
 	}
 
 	/**
-	 * Note by @PG-Momik
-	 * Obsidian's default 'modify' event is 'throttled' not 'debounced'(As per my observation)
-	 * The event delay is 2 to 3 seconds.
-	 * So we set debounce interval to time greater than throttle interval.
+	 * Note by: @PG-Momik
+	 * Obsidian's default 'modify' event is 'throttled' not 'debounced' (I Think)
+	 * The event delay is 2 seconds.
+	 * So we set the debounce interval to time greater than the throttle interval.
 	 */
-	debouncedSync = debounce(() => {
-		this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.activeTab)
-	}, 3000, true)
+	debouncedSync = debounce(async (file: TFile) => {
+		console.log('debounce sync vitra');
+		if(this.oeFileManager.isSupportedFile(file)){
+			console.log('i will sync now');
+			await this.oeFileManager.fileProcessor.processSingleFile(this.settings, file);
+			this.timeout = 2500;
+		}
+	}, this.timeout, true)
 
-	/*
-	 * Registers event and functionality on event
+	debouncedSave = debounce((file: TFile)=>{
+		this.timeout = 0
+		this.wasEdited[file.path] = false;
+		this.debouncedSync(file);
+	}, 500, true);
+
+	/**
+	 * Register event and functionality on event
 	 */
+	private registerAllEvents(): void {
+
+		/**
 	private registerAllEvents() {
 		/*
 		 * Registers and handles initial Obsidian open event
 		 */
 		this.registerEvent(
-			// @ts-ignore
-			this.app.workspace.on("layout-ready", () => {
-				this.oeFileManager.fileProcessor.processMarkedFiles(this.settings).then();
-			})
+			// @ts-ignore ( IDE SHOWING ERROR DESPITE THIS CODE WORKING. )
+			this.app.workspace.on("layout-ready",
+				() => {
+					this.oeFileManager.fileProcessor.processMarkedFiles(this.settings).then();
+				}
+			)
 		);
 
 		/*
 		 * Registers and handles active note edit event
 		 */
 		this.registerEvent(
-			this.app.vault.on("modify", ()=>{
-				this.debouncedSync.cancel()
-				this.debouncedSync();
-			})
+			this.app.vault.on("modify",
+			async (file) => {
+					if (file instanceof TFile) {
+						this.debouncedSync(file as TFile);
+					}
+				}
+			)
 		);
 
-		/*
-		 * Registers and handles vault's note rename event
+		/**
+		 * Registers and handles vault's note rename event.
 		 */
 		this.registerEvent(
-			this.app.vault.on("rename", () => {
-				this.oeFileManager.onActiveFileSaveAction(this.settings).then();
-			})
+			this.app.vault.on("rename",
+			() => {
+					this.oeFileManager.onActiveFileSaveAction(this.settings).then();
+				}
+			)
 		);
 
-		/*
-		 * Registers and handles note save event
+		/**
+		 * Registers and handles note save event.
 		 */
 		const saveCommandDefinition = (this.app as any).commands?.commands?.["editor:save-file"];
 		const save = saveCommandDefinition?.callback;
 
 		if (typeof save === "function") {
 			saveCommandDefinition.callback = async () => {
-				this.debouncedSync.cancel();
-				this.oeFileManager.onActiveFileSaveAction(this.settings).then();
+				this.debouncedSave(this.activeTab);
 			};
 		}
 
+		/**
+		 * Registers and handles tab switch event.
+		 */
 		this.registerEvent(
-			this.app.workspace.on('active-leaf-change', () => {
-				if(this.previousTab){
-					const prev = this.previousTab;
-					if(this.wasEdited[prev.name]){
-						this.debouncedSync.cancel()
-						this.oeFileManager.fileProcessor.processSingleFile(this.settings, this.previousTab)
+			this.app.workspace.on('active-leaf-change',
+				async () => {
+					if (this.oeFileManager.isActualTabChanged(this.previousTab)) {
+						if (this.oeFileManager.fileWasEdited(this.wasEdited, this.previousTab) && this.oeFileManager.isSupportedFile(this.previousTab)) {
+							this.debouncedSync(this.previousTab);
+						}
 
-						this.previousTab = this.app.workspace.getActiveFile()
-						this.wasEdited[prev.name] = false
+						this.setPreviousAndActiveTab();
+						this.wasEdited[this.activeTab.path] = false;
 					}
 				}
-			})
+			)
 		);
+	}
+
+	/**
+	 * Set previousTab and activeTab to current open file.
+	 */
+	private setPreviousAndActiveTab(): void {
+		const openFileOnAppOpen  = this.app.workspace.getActiveFile()
+
+		if(openFileOnAppOpen){
+			this.previousTab = this.activeTab = openFileOnAppOpen
+		}
 	}
 }
