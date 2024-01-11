@@ -129,9 +129,20 @@ class OnlyEverFileParser {
 
 		const {listOfSection, listOfH1} = this.parseContentToOeContentJson(content);
 
+		let finalBannerImage = bannerImageUrl;
+
+		if(!finalBannerImage){
+			const simpleMarkdownImageRegex = /!\[(.*?)]\((.*?)\)/
+			const match = contentsWithoutFlag.match(simpleMarkdownImageRegex);
+
+			if(match){
+				finalBannerImage = match[2];
+			}
+		}
+
 		return {
 			title: file.basename,
-			banner_image: bannerImageUrl,
+			banner_image: finalBannerImage,
 			slug: `${setting.userId}-${file.stat.ctime}`,
 			content: JSON.stringify(listOfSection),
 			description: "Obsidian vault",
