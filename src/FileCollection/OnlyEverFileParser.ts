@@ -1,4 +1,4 @@
-import {App, arrayBufferToBase64, CachedMetadata, EmbedCache, SectionCache, TFile, TFolder} from "obsidian";
+import {App, arrayBufferToBase64, CachedMetadata, EmbedCache, TFile, TFolder} from "obsidian";
 import {OnlyEverApi} from "../Api/onlyEverApi";
 import {
 	MarkdownAndImageInputPayloadMap,
@@ -10,9 +10,19 @@ import {
 	Siblings,
 	Stat
 } from "../interfaces";
-import {OeToast} from "../OeToast";
 
-class OnlyEverFileParser {
+import {OeToast} from "../OeToast";
+import {fromMarkdown} from "mdast-util-from-markdown";
+import {Root, RootContent,} from "mdast";
+import {gfmTableFromMarkdown,} from "mdast-util-gfm-table";
+import {gfmTable} from 'micromark-extension-gfm-table'
+import {math} from 'micromark-extension-math';
+
+import {parseMdastBlockToOeBlock, restructureInitialMdastTree} from "../oeMdastHelper";
+import {HeadingBlock, OeBlock} from "../classes";
+import {mathFromMarkdown} from "mdast-util-math";
+
+export class OnlyEverFileParser {
 	app: App;
 
 	//This is for filtering.
@@ -127,7 +137,16 @@ class OnlyEverFileParser {
 			fileCache
 		);
 
-		const {listOfSection, listOfH1} = this.parseContentToOeContentJson(content);
+		let tree = fromMarkdown(content, {
+			extensions: [gfmTable(), math()],
+			mdastExtensions: [gfmTableFromMarkdown(), mathFromMarkdown()]
+		})
+
+		tree = restructureInitialMdastTree(tree);
+
+		const parsedBlocks = this.parseMdastTreeToOeBlocks(tree);
+
+		const {reformattedBlocks, listOfH1s} = this.parseOeBlocksToOeSourceContent(parsedBlocks);
 
 		let finalBannerImage = bannerImageUrl;
 
@@ -144,9 +163,9 @@ class OnlyEverFileParser {
 			title: file.basename,
 			banner_image: finalBannerImage,
 			slug: `${setting.userId}-${file.stat.ctime}`,
-			content: JSON.stringify(listOfSection),
+			content: JSON.stringify(reformattedBlocks),
 			description: "Obsidian vault",
-			heading: listOfH1,
+			heading: listOfH1s,
 			internal_links: internalLinks,
 			source_type: "text",
 			source_category: {
@@ -164,125 +183,43 @@ class OnlyEverFileParser {
 	 *
 	 * IMPORTANT: Read code comments slowly and carefully
 	 *
-	 * @param markdownAsString string
+	 * @param blocks
 	 *
 	 * @returns {OeSection[], string[]}
+	 *
 	 */
-	parseContentToOeContentJson(markdownAsString: string): { listOfSection: OeSection[]; listOfH1: string[] } {
-		// listOfH1 is the final list of h1 ordered headings
-		const listOfH1: string[] = []
+	private parseOeBlocksToOeSourceContent(blocks: OeBlock[]): { reformattedBlocks: OeBlock[], listOfH1s: string[] } {
+		const headingStack: HeadingBlock[] = [];
+		const reformattedBlocks: OeBlock[] = [];
+		const listOfH1s : string[] = [];
 
-		// listOfSection is the final list that we return
-		const listOfSection: OeSection[] = [];
-
-		// stack is kinda like a temporary listOfSection that maintains sections withing the hierarchy.
-		const stack: OeSection[] = [];
-
-		// Current section is just previously iterated section.
-		// It is basically the active session's parent section, if the active session's heading order is smaller than active session or if the active section is just simple content.
-		// This means that current section will be constantly updated to contain md contents within its hierarchy level
-		let currentSection: OeSection | null = null
-
-		let initialContent = '';
-		let insideCodeBlock = false;
-
-		const lines = markdownAsString.split('\n');
-
-		for (const line of lines) {
-			const headingMatch = line.match(/^(#+) (.+)$/);
-			const codeBlockMatch = line.match(/^~~~.*$|^```.*$/);
-
-			if (codeBlockMatch) {
-				insideCodeBlock = !insideCodeBlock;
-			}
-
-			if (insideCodeBlock) {
-				// This means we are iterating inside a code block
-				// So we would not want to treat '# something' as a heading
-				if (currentSection) {
-					currentSection.content += line + '\n';
-				} else {
-					initialContent = initialContent + line + '\n';
+		for (const block of blocks) {
+			if (block instanceof HeadingBlock) {
+				if(block.heading_level === 1){
+					listOfH1s.push(block.content)
 				}
+
+				while (headingStack.length > 0 && block.heading_level <= headingStack[headingStack.length - 1].heading_level) {
+					headingStack.pop();
+				}
+
+				if (headingStack.length > 0) {
+					headingStack[headingStack.length - 1].children.push(block);
+				} else {
+					reformattedBlocks.push(block);
+				}
+
+				headingStack.push(block);
 			} else {
-				if (headingMatch) {
-					// Inside the 'if condition', if the line is a heading.
-
-					// Code looks weird, but headingMatch is an array that basically contains: [ # complete title, #, title];.
-					// So we're just voiding 0th index and assigning the remaining 2 indexes to hashes and title.
-					const [, hashes, title] = headingMatch;
-					const heading_level = hashes.length;
-
-					if (heading_level === 1) {
-						// Maintaining a list of H1s
-						listOfH1.push(title);
-					}
-
-					// We need an active section for each iteration.
-					const section: OeSection = {
-						title,
-						content: '',
-						heading_level,
-						children: [],
-					};
-
-					// This is for when we find heading of higher order than current section's heading order
-					// We need to clear the stack until the heading order is equal to or higher
-					while (stack.length > 0 && heading_level <= stack[stack.length - 1].heading_level) {
-						stack.pop();
-					}
-
-					if (stack.length === 0) {
-						// The stack is usually only sized 0 when there's initial paragraph(s) .i.e content before we see heading of any order
-						if (initialContent !== '') {
-							listOfSection.push({
-								title: '',
-								content: initialContent,
-								heading_level: 0,
-								children: [],
-							});
-							initialContent = '';
-						}
-						listOfSection.push(section);
-					} else {
-						// This is the normal-est flow in this whole thing.
-						// We push active section to stack.
-						stack[stack.length - 1].children.push(section);
-					}
-
-					stack.push(section);
-					// Since the top level if condition of this block indicates that we've detected a new heading,
-					// This means we are about to go to another hierarchy
-					// That is why we need to update current section to active section
-					// (Read this statement relatively to this iteration) :
-					// So that in the next iteration, content are filled in this section rather than the previous section.
-					currentSection = section;
+				if (headingStack.length > 0) {
+					headingStack[headingStack.length - 1].children.push(block);
 				} else {
-					// We're dealing with normal content.
-					if (currentSection) {
-						// We're dealing with content that falls under a heading of any order
-						currentSection.content += line + '\n';
-					} else{
-						// We're dealing with content that does not fall under any heading.
-						// Usually this is the case for when there's a paragraph before any heading in the note.
-						initialContent += line + '\n';
-					}
+					reformattedBlocks.push(block);
 				}
 			}
 		}
 
-		if (initialContent) {
-			const initialSection: OeSection = {
-				title: '',
-				content: initialContent,
-				heading_level: 0,
-				children: []
-			}
-
-			listOfSection.push(initialSection)
-		}
-
-		return {listOfSection, listOfH1};
+		return {reformattedBlocks, listOfH1s};
 	}
 
 	/**
@@ -587,6 +524,21 @@ class OnlyEverFileParser {
 
 		throw new Error("Error invalid token.")
 	}
-}
 
-export {OnlyEverFileParser}
+	/***
+	 * Parses mdast blocks to oe blocks.
+	 *
+	 * @return Promise<string>
+	 *
+	 * @param tree
+	 */
+	private parseMdastTreeToOeBlocks(tree: Root) {
+		const transformedTree: Array<OeBlock> = [];
+
+		tree.children.forEach((block: RootContent) => {
+			transformedTree.push(parseMdastBlockToOeBlock(block));
+		})
+
+		return transformedTree;
+	}
+}
