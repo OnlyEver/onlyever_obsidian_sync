@@ -18,7 +18,8 @@ export class HeadingBlock extends OeBlock {
 		block.type = "paragraph";
 		this.content = toMarkdown(block, {extensions: [mathToMarkdown()]})
 		this.block_type = "heading";
-		this.heading_level = block.depth;
+		// @ts-ignore
+        this.heading_level = block.depth;
 		this.children = [];
 	}
 }
@@ -43,10 +44,12 @@ export class ListBlock extends OeBlock {
 		super();
 
 		this.block_type = "list";
-		this.list_type = block.ordered ? 'ordered' : 'unordered';
+		// @ts-ignore
+        this.list_type = block.ordered ? 'ordered' : 'unordered';
 		this.content = [];
 
-		block.children.forEach((innerBlock: RootContent) => {
+		// @ts-ignore
+        block.children.forEach((innerBlock: RootContent) => {
 			this.content.push(new ListItemBlock(innerBlock));
 		})
 	}
@@ -72,8 +75,10 @@ export class ImageBlock extends OeBlock {
 		super();
 
 		this.block_type = "image";
-		this.img_src = block.children[0].url
-		this.img_caption = block.children[0].alt
+		// @ts-ignore
+        this.img_src = block.children[0].url
+		// @ts-ignore
+        this.img_caption = block.children[0].alt
 	}
 
 }
@@ -87,7 +92,8 @@ export class TableBlock extends OeBlock {
 		this.block_type = "table";
 		this.rows = [];
 
-		block.children.forEach((innerBlock: RootContent, index: number) =>{
+		// @ts-ignore
+        block.children.forEach((innerBlock: RootContent, index: number) =>{
 			this.rows.push(new RowBlock(innerBlock, index))
 		})
 	}
@@ -104,7 +110,8 @@ export class RowBlock extends OeBlock {
 		this.values = [];
 		this.is_heading = rowIndex === 0;
 
-		block.children.forEach((innerBlock: RootContent)=>{
+		// @ts-ignore
+        block.children.forEach((innerBlock: RootContent)=>{
 			innerBlock.type = "paragraph";
 
 			this.values.push(toMarkdown(innerBlock, {extensions: [mathToMarkdown()]}))
@@ -119,7 +126,8 @@ export class CodeBlock extends OeBlock {
 		super();
 
 		this.block_type = "code";
-		this.content = block.value;
+		// @ts-ignore
+        this.content = block.value;
 	}
 }
 
@@ -144,6 +152,7 @@ export class MathBlock extends OeBlock {
 		super();
 
 		this.block_type = "math";
-		this.content = block.value;
+		// @ts-ignore
+        this.content = block.value;
 	}
 }

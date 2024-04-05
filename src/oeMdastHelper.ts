@@ -15,6 +15,7 @@ export function isImageElement(block: RootContent) {
 }
 
 export function containsMdastImageBlock(block: RootContent) {
+	// @ts-ignore
 	return block.children.some((child: RootContent) => child.hasOwnProperty('type') && child.type === 'image');
 }
 
@@ -23,7 +24,8 @@ export function fragmentMdastParagraphBlock(paragraph: RootContent) {
 	const fragmentedParagraphs: Array<RootContent> = [];
 	let currentFragment: [] = [];
 
-	paragraph?.children.forEach((child: never) => {
+	// @ts-ignore
+	paragraph.children.forEach((child: RootContent) => {
 		if (child.type === 'image') {
 			if (currentFragment.length > 0) {
 				fragmentedParagraphs.push({type: "paragraph", children: currentFragment});
@@ -31,6 +33,7 @@ export function fragmentMdastParagraphBlock(paragraph: RootContent) {
 			}
 			fragmentedParagraphs.push({type: "paragraph", children: [child]});
 		} else {
+			// @ts-ignore
 			currentFragment.push(child);
 		}
 	})
