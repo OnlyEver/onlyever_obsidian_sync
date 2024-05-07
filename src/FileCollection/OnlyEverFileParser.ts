@@ -165,12 +165,13 @@ export class OnlyEverFileParser {
 			slug: `${setting.userId}-${file.stat.ctime}`,
 			content: JSON.stringify(reformattedBlocks),
 			description: "Obsidian vault",
-			heading: listOfH1s,
+			headings: listOfH1s,
 			internal_links: internalLinks,
 			source_type: "text",
 			source_category: {
 				category: 'notes',
-				sub_category: 'obsidian'
+				sub_category: 'obsidian',
+				extension: '.md'
 			},
 			fileCtime: file.stat.ctime,
 			fileMtime: file.stat.mtime,
