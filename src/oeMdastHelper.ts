@@ -1,7 +1,7 @@
 import {Root, RootContent} from "mdast";
 import {
 	BlockQuoteBlock,
-	CodeBlock,
+	CodeBlock, EmptyBlock,
 	HeadingBlock,
 	ImageBlock,
 	ListBlock, MathBlock,
@@ -62,6 +62,15 @@ export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
 			return new TableBlock(block);
 		case "math":
 			return new MathBlock(block);
+		/**
+		 * Do not remove this line..
+		 * This line is in-fact reachable, even tho the IDE suggests its not.
+		 * This is because RootContent doesn't contain "empty_line" as a value for the type property.
+		 * But "empty_line" exists because we manually pushed empty_line block when revising the ree.
+		 */
+		//@ts-ignore
+		case "empty_line":
+			return new EmptyBlock();
 		default:
 			if (isImageElement(block)) {
 				return new ImageBlock(block)
@@ -74,7 +83,28 @@ export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
 export function restructureInitialMdastTree(tree: Root) {
 	const revisedTree = {'type': 'root', children: []} as Root;
 
+	let loopIteration = 0;
+	let currentItemStartLine = 0;
+	let previousItemEndLine = 0;
+
+	const emptyBlock  = {
+		type: 'empty_line',
+		length: 1
+	}
+
 	tree.children?.forEach((childBlock: RootContent) => {
+		if(loopIteration!==0){
+			currentItemStartLine = childBlock.position?.start.line ?? 0;
+
+			const numberOfEmptyLines = currentItemStartLine - previousItemEndLine - 1;
+
+			if(numberOfEmptyLines>0){
+				for(let i=0; i<numberOfEmptyLines; i++){
+					revisedTree.children.push(emptyBlock as RootContent);
+				}
+			}
+		}
+
 		if (childBlock.type === 'paragraph'
 			&& childBlock.children
 			&& childBlock.children.length > 1
@@ -88,6 +118,9 @@ export function restructureInitialMdastTree(tree: Root) {
 		} else {
 			revisedTree.children?.push(childBlock);
 		}
+
+		previousItemEndLine = childBlock.position?.end.line ?? 0;
+		loopIteration++;
 	});
 
 	return revisedTree;

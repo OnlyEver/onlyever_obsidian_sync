@@ -21,6 +21,7 @@ import {math} from 'micromark-extension-math';
 import {parseMdastBlockToOeBlock, restructureInitialMdastTree} from "../oeMdastHelper";
 import {HeadingBlock, OeBlock} from "../classes";
 import {mathFromMarkdown} from "mdast-util-math";
+import {squeezeParagraphs} from 'mdast-squeeze-paragraphs'
 
 export class OnlyEverFileParser {
 	app: App;
