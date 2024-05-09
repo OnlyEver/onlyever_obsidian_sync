@@ -80,36 +80,48 @@ export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
 	}
 }
 
-export function restructureInitialMdastTree(tree: Root) {
+export function restructureInitialMdastTree(tree: Root, numberOfSpacesMappedToEmptyLineNumber: { [key: number]: number }) {
 	const revisedTree = {'type': 'root', children: []} as Root;
+	let previousBlockEnd = 0;
 
 	let loopIteration = 0;
 	let currentItemStartLine = 0;
-	let previousItemEndLine = 0;
 
 	const emptyBlock  = {
 		type: 'empty_line',
-		length: 1
 	}
+	const emptyParagraphBlock  = {
+		type: 'paragraph',
+		children: [{
+			type: "text",
+			value: ""
+		}]
+	}
+
+	const lineNumbersWithEmptyLines = Object.keys(numberOfSpacesMappedToEmptyLineNumber)
 
 	tree.children?.forEach((childBlock: RootContent) => {
 		if(loopIteration!==0){
 			currentItemStartLine = childBlock.position?.start.line ?? 0;
+			let lookBackLineNumber =  currentItemStartLine - 1;
 
-			const numberOfEmptyLines = currentItemStartLine - previousItemEndLine - 1;
+			while(lookBackLineNumber >= previousBlockEnd){
 
-			if(numberOfEmptyLines>0){
-				for(let i=0; i<numberOfEmptyLines; i++){
-					revisedTree.children.push(emptyBlock as RootContent);
+				if(lineNumbersWithEmptyLines.contains(String(lookBackLineNumber))){
+					const numberOfSpaces = numberOfSpacesMappedToEmptyLineNumber[lookBackLineNumber];
+
+					if(numberOfSpaces > 0){
+						revisedTree.children.push(emptyParagraphBlock as RootContent)
+					}else{
+						revisedTree.children.push(emptyBlock as RootContent);
+					}
 				}
+
+				lookBackLineNumber = lookBackLineNumber - 1;
 			}
 		}
 
-		if (childBlock.type === 'paragraph'
-			&& childBlock.children
-			&& childBlock.children.length > 1
-			&& containsMdastImageBlock(childBlock)
-		) {
+		if (childBlock.type === 'paragraph' && childBlock.children && childBlock.children.length > 1 && containsMdastImageBlock(childBlock)) {
 			const fragmentedBlocks: Array<RootContent> = fragmentMdastParagraphBlock(childBlock);
 
 			fragmentedBlocks.forEach((innerChild: RootContent) => {
@@ -119,7 +131,7 @@ export function restructureInitialMdastTree(tree: Root) {
 			revisedTree.children?.push(childBlock);
 		}
 
-		previousItemEndLine = childBlock.position?.end.line ?? 0;
+		previousBlockEnd = childBlock.position?.end.line ?? 0;
 		loopIteration++;
 	});
 

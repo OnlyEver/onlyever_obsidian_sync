@@ -158,10 +158,8 @@ export class MathBlock extends OeBlock {
 }
 
 export class EmptyBlock extends OeBlock{
-	length: number
 	constructor() {
 		super();
 		this.block_type = "empty_line";
-		this.length = 1
 	}
 }
