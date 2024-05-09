@@ -4,9 +4,9 @@ import {
 	MarkdownAndImageInputPayloadMap,
 	MarkdownAndRemoteUrlMap,
 	OeImageInputPayload,
-	OnlyEverSettings,
 	OeInternalLink,
 	OeSection,
+	OnlyEverSettings,
 	Siblings,
 	Stat
 } from "../interfaces";
@@ -21,7 +21,6 @@ import {math} from 'micromark-extension-math';
 import {parseMdastBlockToOeBlock, restructureInitialMdastTree} from "../oeMdastHelper";
 import {HeadingBlock, OeBlock} from "../classes";
 import {mathFromMarkdown} from "mdast-util-math";
-import {squeezeParagraphs} from 'mdast-squeeze-paragraphs'
 
 export class OnlyEverFileParser {
 	app: App;
@@ -138,12 +137,15 @@ export class OnlyEverFileParser {
 			fileCache
 		);
 
+		const countEmptyLinesWithSpaces = this.countEmptyLinesWithSpaces(content);
+
+
 		let tree = fromMarkdown(content, {
 			extensions: [gfmTable(), math()],
 			mdastExtensions: [gfmTableFromMarkdown(), mathFromMarkdown()]
 		})
 
-		tree = restructureInitialMdastTree(tree);
+		tree = restructureInitialMdastTree(tree, countEmptyLinesWithSpaces);
 
 		const parsedBlocks = this.parseMdastTreeToOeBlocks(tree);
 
@@ -542,5 +544,17 @@ export class OnlyEverFileParser {
 		})
 
 		return transformedTree;
+	}
+	private countEmptyLinesWithSpaces(content: string) {
+		const lines = content.split('\n');
+		const emptyLines = {};
+
+		lines.forEach((line, index) => {
+			if (line.trim() === "") {
+				// @ts-ignore
+				emptyLines[index + 1] = line.match(/^ */)[0].length;
+			}
+		});
+		return emptyLines;
 	}
 }
