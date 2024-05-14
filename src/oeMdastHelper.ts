@@ -4,7 +4,7 @@ import {
 	CodeBlock, EmptyBlock,
 	HeadingBlock,
 	ImageBlock,
-	ListBlock, MathBlock,
+	ListBlock, ListItemBlock, MathBlock,
 	OeBlock,
 	ParagraphBlock,
 	TableBlock
@@ -45,7 +45,7 @@ export function fragmentMdastParagraphBlock(paragraph: RootContent) {
 	return fragmentedParagraphs;
 }
 
-export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
+export function parseMdastBlockToOeBlock(block: RootContent, content: string): OeBlock {
 
 	switch (block.type) {
 		case "code":
@@ -54,8 +54,6 @@ export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
 			return new HeadingBlock(block);
 		case "image":
 			return new ImageBlock(block);
-		case "list":
-			return new ListBlock(block);
 		case "blockquote":
 			return new BlockQuoteBlock(block);
 		case "table":
@@ -71,6 +69,14 @@ export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
 		//@ts-ignore
 		case "empty_line":
 			return new EmptyBlock();
+		case "list":{
+			const blockStartLine= block.position?.start.line ?? 0;
+			const blockEndLine= block.position?.end.line ?? 0;
+			const rawLines= content.split("\n");
+			const blockFragmentFromRawLines= rawLines.slice(blockStartLine-1, blockEndLine)
+
+			return new ListBlock(blockFragmentFromRawLines);
+		}
 		default:
 			if (isImageElement(block)) {
 				return new ImageBlock(block)

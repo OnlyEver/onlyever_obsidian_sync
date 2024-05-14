@@ -1,6 +1,7 @@
 import {Root, RootContent} from "mdast";
 import {toMarkdown} from "mdast-util-to-markdown";
 import {mathToMarkdown} from "mdast-util-math";
+import {visit} from "unist-util-visit";
 
 export class OeBlock {
 	block_type: string;
@@ -37,33 +38,89 @@ export class ParagraphBlock extends OeBlock {
 }
 
 export class ListBlock extends OeBlock {
-	list_type: "ordered" | "unordered";
 	content: ListItemBlock[];
 
-	constructor(block: RootContent) {
+	constructor(blockFragmentFromRawLines: string[]) {
 		super();
-
+		const temp = this.parseListItems(blockFragmentFromRawLines);
 		this.block_type = "list";
-		// @ts-ignore
-        this.list_type = block.ordered ? 'ordered' : 'unordered';
-		this.content = [];
+		this.content = this.buildNestedStructure(temp);
+	}
 
-		// @ts-ignore
-        block.children.forEach((innerBlock: RootContent) => {
-			this.content.push(new ListItemBlock(innerBlock));
-		})
+	private parseListItems(lines: string[]): ListItemBlock[] {
+		const listItems: ListItemBlock[] = [];
+
+		for (const line of lines) {
+			const match = line.match(/^(\s*)(\S*\s*)(.*)/);
+			if (match) {
+				const indentation = match[1].replace(/\t/g, '    ').length;
+				let indicator = match[2];
+				let text = match[3];
+				let type: 'ordered' | 'unordered' | 'checkbox';
+
+				if (indicator === line) {
+					type = 'unordered';
+					indicator = '-';
+					text = line;
+				} else if (text.startsWith('[ ]') || text.startsWith('[x]')) {
+					type = "checkbox";
+					indicator = text.startsWith('[x]') ? 'x' : 'y';
+				} else {
+					if (indicator.startsWith('*') || indicator.startsWith('-')) {
+						type = 'unordered';
+					} else {
+						type = 'ordered';
+					}
+				}
+
+				listItems.push(new ListItemBlock(text, indentation, type, indicator));
+			}
+		}
+
+		return listItems;
+	}
+
+	private buildNestedStructure(listItems: ListItemBlock[]): ListItemBlock[] {
+		const root: ListItemBlock = new ListItemBlock("", -1, 'unordered', '-');
+		const stack: ListItemBlock[] = [root];
+
+		for (const item of listItems) {
+			let parent = stack.pop();
+			while (parent && parent.level >= item.level) {
+				parent = stack.pop();
+			}
+			if (parent) {
+				parent.children[0] = parent.children[0] || [];
+				//@ts-expect-error
+				parent.children[0].push({
+					content: item.content,
+					list_type: item.list_type,
+					marker: item.marker,
+					children: item.children
+				} as ListItemBlock);
+				stack.push(parent, item);
+			} else {
+				stack.push(item);
+			}
+		}
+
+		return root.children || [];
 	}
 }
 
 export class ListItemBlock extends OeBlock {
 	content: string;
-
-	constructor(block: RootContent) {
+	list_type: "ordered" | "unordered" | "checkbox";
+	marker: string
+	children: ListItemBlock[] = [];
+	level: number
+	constructor(text: string, level: number, type: 'ordered' | 'unordered' | 'checkbox', indicator: string) {
 		super();
-
-		this.block_type = "list_type";
-		block.type = "paragraph";
-		this.content = toMarkdown(block, {extensions: [mathToMarkdown()]})
+		this.block_type = "list_item";
+		this.content = text;
+		this.level = level;
+		this.list_type = type;
+		this.marker = indicator.trim();
 	}
 }
 

@@ -139,7 +139,6 @@ export class OnlyEverFileParser {
 
 		const countEmptyLinesWithSpaces = this.countEmptyLinesWithSpaces(content);
 
-
 		let tree = fromMarkdown(content, {
 			extensions: [gfmTable(), math()],
 			mdastExtensions: [gfmTableFromMarkdown(), mathFromMarkdown()]
@@ -147,7 +146,7 @@ export class OnlyEverFileParser {
 
 		tree = restructureInitialMdastTree(tree, countEmptyLinesWithSpaces);
 
-		const parsedBlocks = this.parseMdastTreeToOeBlocks(tree);
+		const parsedBlocks = this.parseMdastTreeToOeBlocks(tree, content);
 
 		const {reformattedBlocks, listOfH1s} = this.parseOeBlocksToOeSourceContent(parsedBlocks);
 
@@ -535,12 +534,13 @@ export class OnlyEverFileParser {
 	 * @return Promise<string>
 	 *
 	 * @param tree
+	 * @param content
 	 */
-	private parseMdastTreeToOeBlocks(tree: Root) {
+	private parseMdastTreeToOeBlocks(tree: Root, content: string) {
 		const transformedTree: Array<OeBlock> = [];
 
-		tree.children.forEach((block: RootContent) => {
-			transformedTree.push(parseMdastBlockToOeBlock(block));
+		tree.children.forEach(function(block: RootContent) {
+			transformedTree.push(parseMdastBlockToOeBlock(block, content));
 		})
 
 		return transformedTree;
