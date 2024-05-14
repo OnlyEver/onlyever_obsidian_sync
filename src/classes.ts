@@ -1,6 +1,7 @@
-import {Root, RootContent} from "mdast";
+import {RootContent} from "mdast";
 import {toMarkdown} from "mdast-util-to-markdown";
 import {mathToMarkdown} from "mdast-util-math";
+import {removeNewLine} from "./oeMdastHelper";
 
 export class OeBlock {
 	block_type: string;
@@ -15,12 +16,12 @@ export class HeadingBlock extends OeBlock {
 	constructor(block: RootContent) {
 		super();
 
-		block.type = "paragraph";
-		this.content = toMarkdown(block, {extensions: [mathToMarkdown()]})
+		block.type 		= "paragraph";
+		this.content 	= removeNewLine(toMarkdown(block, {extensions: [mathToMarkdown()]}))
 		this.block_type = "heading";
 		// @ts-ignore
         this.heading_level = block.depth;
-		this.children = [];
+		this.children 	   = [];
 	}
 }
 
@@ -29,41 +30,129 @@ export class ParagraphBlock extends OeBlock {
 
 	constructor(block: RootContent) {
 		super();
-
 		this.block_type = "paragraph";
-		this.content = toMarkdown(block, {extensions: [mathToMarkdown()]})
+
+		// @ts-ignore
+		if(block && block?.block_type === 'paragraph'){
+			// @ts-ignore
+			this.content = block.content;
+		}else{
+			this.content = removeNewLine(toMarkdown(block, {extensions: [mathToMarkdown()]}))
+		}
 	}
 
 }
 
 export class ListBlock extends OeBlock {
-	list_type: "ordered" | "unordered";
 	content: ListItemBlock[];
 
-	constructor(block: RootContent) {
+	constructor(blockFragmentFromRawLines: string[] = []) {
 		super();
-
 		this.block_type = "list";
-		// @ts-ignore
-        this.list_type = block.ordered ? 'ordered' : 'unordered';
-		this.content = [];
 
-		// @ts-ignore
-        block.children.forEach((innerBlock: RootContent) => {
-			this.content.push(new ListItemBlock(innerBlock));
-		})
+		if (blockFragmentFromRawLines.length > 0) {
+			const allListItemsNotNestedNoChildren = this.flattenAndParseListItems(blockFragmentFromRawLines);
+			this.content 										 = this.buildNestedStructure(allListItemsNotNestedNoChildren);
+		} else {
+			this.content = [];
+		}
+	}
+
+	private flattenAndParseListItems(lines: string[]): ListItemBlock[] {
+		const listItems: ListItemBlock[] = [];
+
+		for (const line of lines) {
+			const match = line.match(/^(\s*)(\S*\s*)(.*)/);
+			if (match) {
+				const indentation = match[1].replace(/\t/g, '    ').length;
+				let indicator 	   = match[2];
+				let text 		   = match[3];
+				let type: 'ordered' | 'unordered' | 'checkbox';
+
+				if (indicator === line) {
+					type = 'unordered';
+					indicator = '-';
+					text = line;
+				} else if (text.startsWith('[ ]') || text.startsWith('[x]')) {
+					type = "checkbox";
+					indicator = text.startsWith('[x]') ? '[x]' : '[ ]';
+					text = text.replace(/\[ \]|\[x\]/, '');
+				} else {
+					if (indicator.startsWith('*') || indicator.startsWith('-')) {
+						type = 'unordered';
+					} else {
+						type = 'ordered';
+					}
+				}
+
+				listItems.push(new ListItemBlock(text, type, indicator, indentation));
+			}
+		}
+
+		return listItems;
+	}
+
+	private buildNestedStructure(listItems: ListItemBlock[]): ListItemBlock[] {
+		const nestedList: ListItemBlock[] = [];
+		const stack: ListItemBlock[] = [];
+
+		for (const item of listItems) {
+			while (stack.length > 0 && stack[stack.length - 1].level >= item.level) {
+				stack.pop();
+			}
+
+			if (stack.length > 0) {
+				const listBlockInsideChild = stack[stack.length - 1].children;
+
+				if (listBlockInsideChild.length === 0) {
+					listBlockInsideChild.push(new ListBlock());
+				}
+
+				stack[stack.length - 1].children[0].content.push(item);
+			} else {
+				nestedList.push(item);
+			}
+
+			stack.push(item);
+		}
+
+		return nestedList;
+	}
+
+	private unsetLevelProperty(blocks: OeBlock[]): void {
+		for (const block of blocks) {
+			if (block instanceof ListItemBlock) {
+				// @ts-ignore
+				delete ((block as never).level);
+			} else if (block instanceof ListBlock) {
+				this.unsetLevelProperty(block.content);
+			}
+		}
+	}
+
+	public unsetLevelInListItemBlocks(): ListBlock {
+		this.unsetLevelProperty(this.content);
+
+		return this;
 	}
 }
 
-export class ListItemBlock extends OeBlock {
-	content: string;
 
-	constructor(block: RootContent) {
+class ListItemBlock extends OeBlock {
+	content: 	string
+	level:   	number
+	list_type: 	string
+	marker:  	string
+	children: 	OeBlock[]
+
+	constructor(content: string, list_type: string, marker: string, level: number) {
 		super();
-
-		this.block_type = "list_type";
-		block.type = "paragraph";
-		this.content = toMarkdown(block, {extensions: [mathToMarkdown()]})
+		this.block_type = 'list_item'
+		this.content    = content
+		this.level 		= level
+		this.list_type 	= list_type
+		this.marker 	= marker
+		this.children 	= []
 	}
 }
 
@@ -74,9 +163,9 @@ export class ImageBlock extends OeBlock {
 	constructor(block: RootContent) {
 		super();
 
-		this.block_type = "image";
+		this.block_type  = "image";
 		// @ts-ignore
-        this.img_src = block.children[0].url
+        this.img_src     = block.children[0].url
 		// @ts-ignore
         this.img_caption = block.children[0].alt
 	}
@@ -90,7 +179,7 @@ export class TableBlock extends OeBlock {
 		super();
 
 		this.block_type = "table";
-		this.rows = [];
+		this.rows 	    = [];
 
 		// @ts-ignore
         block.children.forEach((innerBlock: RootContent, index: number) =>{
@@ -107,14 +196,14 @@ export class RowBlock extends OeBlock {
 		super();
 
 		this.block_type = "row";
-		this.values = [];
+		this.values     = [];
 		this.is_heading = rowIndex === 0;
 
 		// @ts-ignore
         block.children.forEach((innerBlock: RootContent)=>{
 			innerBlock.type = "paragraph";
 
-			this.values.push(toMarkdown(innerBlock, {extensions: [mathToMarkdown()]}))
+			this.values.push(removeNewLine(toMarkdown(innerBlock, {extensions: [mathToMarkdown()]})))
 		})
 	}
 }
@@ -127,7 +216,7 @@ export class CodeBlock extends OeBlock {
 
 		this.block_type = "code";
 		// @ts-ignore
-        this.content = block.value;
+        this.content 	= block.value;
 	}
 }
 
@@ -138,8 +227,8 @@ export class BlockQuoteBlock extends OeBlock {
 		super();
 
 		this.block_type = "block_quote";
-		block.type = "paragraph";
-		this.content = toMarkdown(block, {extensions: [mathToMarkdown()]});
+		block.type   	= "paragraph";
+		this.content 	= removeNewLine(toMarkdown(block, {extensions: [mathToMarkdown()]}));
 	}
 }
 
@@ -153,7 +242,7 @@ export class MathBlock extends OeBlock {
 
 		this.block_type = "math";
 		// @ts-ignore
-        this.content = block.value;
+        this.content 	= block.value;
 	}
 }
 

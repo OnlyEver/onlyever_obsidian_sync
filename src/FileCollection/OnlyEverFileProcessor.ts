@@ -46,7 +46,7 @@ class OnlyEverFileProcessor {
 	 * Syncs active marked file in vault
 	 */
 	async processSingleFile(setting: OnlyEverSettings, file: null | TFile = null) {
-		file = file ?? this.app.workspace.getActiveFile()
+		file = file ?? this.app.workspace.getActiveFile();
 		const processedFiles: object[] = [];
 
 		if (!file) {
