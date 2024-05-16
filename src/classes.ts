@@ -96,7 +96,8 @@ export class ListBlock extends OeBlock {
 					content: item.content,
 					list_type: item.list_type,
 					marker: item.marker,
-					children: item.children
+					children: item,
+					block_type: 'list_item'
 				} as ListItemBlock);
 				stack.push(parent, item);
 			} else {

@@ -61,8 +61,8 @@ export function parseMdastBlockToOeBlock(block: RootContent, content: string): O
 		case "math":
 			return new MathBlock(block);
 		/**
-		 * Do not remove this line..
-		 * This line is in-fact reachable, even tho the IDE suggests its not.
+		 * Do not remove this line.
+		 * This line is in-fact reachable, even tho the IDE suggests it's not.
 		 * This is because RootContent doesn't contain "empty_line" as a value for the type property.
 		 * But "empty_line" exists because we manually pushed empty_line block when revising the ree.
 		 */
