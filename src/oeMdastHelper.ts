@@ -4,7 +4,7 @@ import {
 	CodeBlock, EmptyBlock,
 	HeadingBlock,
 	ImageBlock,
-	ListBlock, ListItemBlock, MathBlock,
+	ListBlock, MathBlock,
 	OeBlock,
 	ParagraphBlock,
 	TableBlock
@@ -70,12 +70,14 @@ export function parseMdastBlockToOeBlock(block: RootContent, content: string): O
 		case "empty_line":
 			return new EmptyBlock();
 		case "list":{
-			const blockStartLine= block.position?.start.line ?? 0;
-			const blockEndLine= block.position?.end.line ?? 0;
-			const rawLines= content.split("\n");
-			const blockFragmentFromRawLines= rawLines.slice(blockStartLine-1, blockEndLine)
+			const blockStartLine			= block.position?.start.line ?? 0;
+			const blockEndLine  			= block.position?.end.line ?? 0;
+			const rawLines		  			= content.split("\n");
+			const blockFragmentFromRawLines = rawLines.slice(blockStartLine-1, blockEndLine)
 
-			return new ListBlock(blockFragmentFromRawLines);
+			const listBlock 				= new ListBlock(blockFragmentFromRawLines);
+
+			return listBlock.unsetLevelInListItemBlocks();
 		}
 		default:
 			if (isImageElement(block)) {

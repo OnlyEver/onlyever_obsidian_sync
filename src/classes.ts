@@ -40,22 +40,27 @@ export class ParagraphBlock extends OeBlock {
 export class ListBlock extends OeBlock {
 	content: ListItemBlock[];
 
-	constructor(blockFragmentFromRawLines: string[]) {
+	constructor(blockFragmentFromRawLines: string[] = []) {
 		super();
-		const temp = this.parseListItems(blockFragmentFromRawLines);
 		this.block_type = "list";
-		this.content = this.buildNestedStructure(temp);
+
+		if (blockFragmentFromRawLines.length > 0) {
+			const allListItemsNotNestedNoChildren = this.flattenAndParseListItems(blockFragmentFromRawLines);
+			this.content 										 = this.buildNestedStructure(allListItemsNotNestedNoChildren);
+		} else {
+			this.content = [];
+		}
 	}
 
-	private parseListItems(lines: string[]): ListItemBlock[] {
+	private flattenAndParseListItems(lines: string[]): ListItemBlock[] {
 		const listItems: ListItemBlock[] = [];
 
 		for (const line of lines) {
 			const match = line.match(/^(\s*)(\S*\s*)(.*)/);
 			if (match) {
 				const indentation = match[1].replace(/\t/g, '    ').length;
-				let indicator = match[2];
-				let text = match[3];
+				let indicator 	   = match[2];
+				let text 		   = match[3];
 				let type: 'ordered' | 'unordered' | 'checkbox';
 
 				if (indicator === line) {
@@ -64,7 +69,8 @@ export class ListBlock extends OeBlock {
 					text = line;
 				} else if (text.startsWith('[ ]') || text.startsWith('[x]')) {
 					type = "checkbox";
-					indicator = text.startsWith('[x]') ? 'x' : 'y';
+					indicator = text.startsWith('[x]') ? '[x]' : '[ ]';
+					text = text.replace(/\[ \]|\[x\]/, '');
 				} else {
 					if (indicator.startsWith('*') || indicator.startsWith('-')) {
 						type = 'unordered';
@@ -73,7 +79,7 @@ export class ListBlock extends OeBlock {
 					}
 				}
 
-				listItems.push(new ListItemBlock(text, indentation, type, indicator));
+				listItems.push(new ListItemBlock(text, type, indicator, indentation));
 			}
 		}
 
@@ -81,47 +87,66 @@ export class ListBlock extends OeBlock {
 	}
 
 	private buildNestedStructure(listItems: ListItemBlock[]): ListItemBlock[] {
-		const root: ListItemBlock = new ListItemBlock("", -1, 'unordered', '-');
-		const stack: ListItemBlock[] = [root];
+		const nestedList: ListItemBlock[] = [];
+		const stack: ListItemBlock[] = [];
 
 		for (const item of listItems) {
-			let parent = stack.pop();
-			while (parent && parent.level >= item.level) {
-				parent = stack.pop();
+			while (stack.length > 0 && stack[stack.length - 1].level >= item.level) {
+				stack.pop();
 			}
-			if (parent) {
-				parent.children[0] = parent.children[0] || [];
-				//@ts-expect-error
-				parent.children[0].push({
-					content: item.content,
-					list_type: item.list_type,
-					marker: item.marker,
-					children: item,
-					block_type: 'list_item'
-				} as ListItemBlock);
-				stack.push(parent, item);
+
+			if (stack.length > 0) {
+				const listBlockInsideChild = stack[stack.length - 1].children;
+
+				if (listBlockInsideChild.length === 0) {
+					listBlockInsideChild.push(new ListBlock());
+				}
+
+				stack[stack.length - 1].children[0].content.push(item);
 			} else {
-				stack.push(item);
+				nestedList.push(item);
 			}
+
+			stack.push(item);
 		}
 
-		return root.children || [];
+		return nestedList;
+	}
+
+	private unsetLevelProperty(blocks: OeBlock[]): void {
+		for (const block of blocks) {
+			if (block instanceof ListItemBlock) {
+				// @ts-ignore
+				delete ((block as never).level);
+			} else if (block instanceof ListBlock) {
+				this.unsetLevelProperty(block.content);
+			}
+		}
+	}
+
+	public unsetLevelInListItemBlocks(): ListBlock {
+		this.unsetLevelProperty(this.content);
+
+		return this;
 	}
 }
 
-export class ListItemBlock extends OeBlock {
-	content: string;
-	list_type: "ordered" | "unordered" | "checkbox";
-	marker: string
-	children: ListItemBlock[] = [];
-	level: number
-	constructor(text: string, level: number, type: 'ordered' | 'unordered' | 'checkbox', indicator: string) {
+
+class ListItemBlock extends OeBlock {
+	content: 	string
+	level:   	number
+	list_type: 	string
+	marker:  	string
+	children: 	OeBlock[]
+
+	constructor(content: string, list_type: string, marker: string, level: number) {
 		super();
-		this.block_type = "list_item";
-		this.content = text;
-		this.level = level;
-		this.list_type = type;
-		this.marker = indicator.trim();
+		this.block_type = 'list_item'
+		this.content    = content
+		this.level 		= level
+		this.list_type 	= list_type
+		this.marker 	= marker
+		this.children 	= []
 	}
 }
 
