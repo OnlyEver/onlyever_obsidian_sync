@@ -5,7 +5,6 @@ import {
 	MarkdownAndRemoteUrlMap,
 	OeImageInputPayload,
 	OeInternalLink,
-	OeSection,
 	OnlyEverSettings,
 	Siblings,
 	Stat
@@ -18,7 +17,11 @@ import {gfmTableFromMarkdown,} from "mdast-util-gfm-table";
 import {gfmTable} from 'micromark-extension-gfm-table'
 import {math} from 'micromark-extension-math';
 
-import {parseMdastBlockToOeBlock, restructureInitialMdastTree} from "../oeMdastHelper";
+import {
+	parseMdastBlockToOeBlock,
+	restructureInitialMdastTree,
+	splitParagraphBlock
+} from "../oeMdastHelper";
 import {HeadingBlock, OeBlock} from "../classes";
 import {mathFromMarkdown} from "mdast-util-math";
 
@@ -110,6 +113,7 @@ export class OnlyEverFileParser {
 		return syncValue;
 	}
 
+
 	/**
 	 * Parse to global source object format.
 	 *
@@ -122,7 +126,7 @@ export class OnlyEverFileParser {
 	 */
 	async parseFileToOeGlobalSourceJson(setting: OnlyEverSettings, file: TFile, parent: null | TFolder, apiToken: null | string): Promise<object> {
         const fileCache = this.app.metadataCache.getFileCache(file);
-        const contentsWithoutFlag 		= await this.getContentsOfFileWithoutFlag(file);
+        const contentsWithoutFlag 	 = await this.getContentsOfFileWithoutFlag(file);
 
 		if (!setting.userId) {
             new OeToast('User identification failed. Please verify your token.');
@@ -146,7 +150,7 @@ export class OnlyEverFileParser {
 
 		tree = restructureInitialMdastTree(tree, countEmptyLinesWithSpaces);
 
-		const parsedBlocks = this.parseMdastTreeToOeBlocks(tree, content);
+		const parsedBlocks = splitParagraphBlock(this.parseMdastTreeToOeBlocks(tree, content));
 
 		const {reformattedBlocks, listOfH1s} = this.parseOeBlocksToOeSourceContent(parsedBlocks);
 
@@ -223,6 +227,17 @@ export class OnlyEverFileParser {
 		}
 
 		return {reformattedBlocks, listOfH1s};
+	}
+
+	private contentIsString(block: OeBlock):boolean{
+		return block?.content && typeof block.content === 'string';
+	}
+	private removeNewLineAtEnd(block: OeBlock): OeBlock{
+		if (block.content.endsWith('\n')) {
+			block.content = block.content.slice(0, -1);
+		}
+
+		return block;
 	}
 
 	/**

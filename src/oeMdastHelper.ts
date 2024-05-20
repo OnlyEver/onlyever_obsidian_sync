@@ -145,3 +145,87 @@ export function restructureInitialMdastTree(tree: Root, numberOfSpacesMappedToEm
 
 	return revisedTree;
 }
+
+/**
+ * Split paragraph blocks if content contains '\n'.
+ *
+ * @param parsedBlocks OeBlock[]
+ *
+ * @returns OeBlock[]
+ */
+export function splitParagraphBlock(parsedBlocks: OeBlock[]): OeBlock[] {
+	const resultBlocks: OeBlock[] = [];
+
+	parsedBlocks.forEach(block => {
+		if (isParagraphBlock(block)) {
+			if (block.content.startsWith('\n')) {
+				block.content = block.content.slice(1);
+			}
+
+			if (block.content.endsWith('\n')) {
+				block.content = block.content.slice(0, -1);
+			}
+
+			if (block.content.includes('\n')) {
+				const parts = block.content.split('\n');
+
+				block.content = parts[0];
+				resultBlocks.push(block);
+
+				for (let i = 1; i < parts.length; i++) {
+					const newBlock  = cloneBlock(block);
+					newBlock.content = parts[i];
+					resultBlocks.push(newBlock);
+				}
+			} else {
+				resultBlocks.push(block);
+			}
+		} else {
+			resultBlocks.push(block);
+		}
+	});
+
+	return resultBlocks;
+}
+
+/**
+ * Remove starting and ending '\n'.
+ *
+ * @param line string
+ *
+ * @returns string
+ */
+export function removeNewLine(line: string) {
+	if (line.startsWith('\n')) {
+		line = line.slice(1);
+	}
+
+	if (line.endsWith('\n')) {
+		line = line.slice(0, -1);
+	}
+
+	return line;
+}
+
+/**
+ * Checks if Oe ParagraphBlock.
+ *
+ * @param block OeBlock
+ *
+ * @returns OeBlock[]
+ */
+export function isParagraphBlock(block: OeBlock){
+	return block.block_type === 'paragraph' && block instanceof ParagraphBlock
+}
+
+/**
+ * Makes a copy of  block
+ *
+ * @param block ParagraphBlock
+ *
+ * @returns ParagraphBlock[]
+ */
+
+export function cloneBlock(block:ParagraphBlock): ParagraphBlock {
+	return new ParagraphBlock(({block_type: 'paragraph', content: block.content} as unknown) as RootContent);
+}
