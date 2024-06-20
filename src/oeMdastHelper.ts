@@ -45,7 +45,7 @@ export function fragmentMdastParagraphBlock(paragraph: RootContent) {
 	return fragmentedParagraphs;
 }
 
-export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
+export function parseMdastBlockToOeBlock(block: RootContent, content: string): OeBlock {
 
 	switch (block.type) {
 		case "code":
@@ -54,8 +54,6 @@ export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
 			return new HeadingBlock(block);
 		case "image":
 			return new ImageBlock(block);
-		case "list":
-			return new ListBlock(block);
 		case "blockquote":
 			return new BlockQuoteBlock(block);
 		case "table":
@@ -63,14 +61,24 @@ export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
 		case "math":
 			return new MathBlock(block);
 		/**
-		 * Do not remove this line..
-		 * This line is in-fact reachable, even tho the IDE suggests its not.
+		 * Do not remove this line.
+		 * This line is in-fact reachable, even tho the IDE suggests it's not.
 		 * This is because RootContent doesn't contain "empty_line" as a value for the type property.
 		 * But "empty_line" exists because we manually pushed empty_line block when revising the ree.
 		 */
 		//@ts-ignore
 		case "empty_line":
 			return new EmptyBlock();
+		case "list":{
+			const blockStartLine			= block.position?.start.line ?? 0;
+			const blockEndLine  			= block.position?.end.line ?? 0;
+			const rawLines		  			= content.split("\n");
+			const blockFragmentFromRawLines = rawLines.slice(blockStartLine-1, blockEndLine)
+
+			const listBlock 				= new ListBlock(blockFragmentFromRawLines);
+
+			return listBlock.unsetLevelInListItemBlocks();
+		}
 		default:
 			if (isImageElement(block)) {
 				return new ImageBlock(block)
@@ -136,4 +144,88 @@ export function restructureInitialMdastTree(tree: Root, numberOfSpacesMappedToEm
 	});
 
 	return revisedTree;
+}
+
+/**
+ * Split paragraph blocks if content contains '\n'.
+ *
+ * @param parsedBlocks OeBlock[]
+ *
+ * @returns OeBlock[]
+ */
+export function splitParagraphBlock(parsedBlocks: OeBlock[]): OeBlock[] {
+	const resultBlocks: OeBlock[] = [];
+
+	parsedBlocks.forEach(block => {
+		if (isParagraphBlock(block)) {
+			if (block.content.startsWith('\n')) {
+				block.content = block.content.slice(1);
+			}
+
+			if (block.content.endsWith('\n')) {
+				block.content = block.content.slice(0, -1);
+			}
+
+			if (block.content.includes('\n')) {
+				const parts = block.content.split('\n');
+
+				block.content = parts[0];
+				resultBlocks.push(block);
+
+				for (let i = 1; i < parts.length; i++) {
+					const newBlock  = cloneBlock(block);
+					newBlock.content = parts[i];
+					resultBlocks.push(newBlock);
+				}
+			} else {
+				resultBlocks.push(block);
+			}
+		} else {
+			resultBlocks.push(block);
+		}
+	});
+
+	return resultBlocks;
+}
+
+/**
+ * Remove starting and ending '\n'.
+ *
+ * @param line string
+ *
+ * @returns string
+ */
+export function removeNewLine(line: string) {
+	if (line.startsWith('\n')) {
+		line = line.slice(1);
+	}
+
+	if (line.endsWith('\n')) {
+		line = line.slice(0, -1);
+	}
+
+	return line;
+}
+
+/**
+ * Checks if Oe ParagraphBlock.
+ *
+ * @param block OeBlock
+ *
+ * @returns OeBlock[]
+ */
+export function isParagraphBlock(block: OeBlock){
+	return block.block_type === 'paragraph' && block instanceof ParagraphBlock
+}
+
+/**
+ * Makes a copy of  block
+ *
+ * @param block ParagraphBlock
+ *
+ * @returns ParagraphBlock[]
+ */
+
+export function cloneBlock(block:ParagraphBlock): ParagraphBlock {
+	return new ParagraphBlock(({block_type: 'paragraph', content: block.content} as unknown) as RootContent);
 }
