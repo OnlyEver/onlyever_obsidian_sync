@@ -4,9 +4,9 @@ import {
 	MarkdownAndImageInputPayloadMap,
 	MarkdownAndRemoteUrlMap,
 	OeImageInputPayload,
-	OnlyEverSettings,
 	OeInternalLink,
 	OeSection,
+	OnlyEverSettings,
 	Siblings,
 	Stat
 } from "../interfaces";
@@ -137,12 +137,15 @@ export class OnlyEverFileParser {
 			fileCache
 		);
 
+		const countEmptyLinesWithSpaces = this.countEmptyLinesWithSpaces(content);
+
+
 		let tree = fromMarkdown(content, {
 			extensions: [gfmTable(), math()],
 			mdastExtensions: [gfmTableFromMarkdown(), mathFromMarkdown()]
 		})
 
-		tree = restructureInitialMdastTree(tree);
+		tree = restructureInitialMdastTree(tree, countEmptyLinesWithSpaces);
 
 		const parsedBlocks = this.parseMdastTreeToOeBlocks(tree);
 
@@ -165,12 +168,13 @@ export class OnlyEverFileParser {
 			slug: `${setting.userId}-${file.stat.ctime}`,
 			content: JSON.stringify(reformattedBlocks),
 			description: "Obsidian vault",
-			heading: listOfH1s,
+			headings: listOfH1s,
 			internal_links: internalLinks,
 			source_type: "text",
 			source_category: {
 				category: 'notes',
-				sub_category: 'obsidian'
+				sub_category: 'obsidian',
+				extension: '.md'
 			},
 			fileCtime: file.stat.ctime,
 			fileMtime: file.stat.mtime,
@@ -540,5 +544,17 @@ export class OnlyEverFileParser {
 		})
 
 		return transformedTree;
+	}
+	private countEmptyLinesWithSpaces(content: string) {
+		const lines = content.split('\n');
+		const emptyLines = {};
+
+		lines.forEach((line, index) => {
+			if (line.trim() === "") {
+				// @ts-ignore
+				emptyLines[index + 1] = line.match(/^ */)[0].length;
+			}
+		});
+		return emptyLines;
 	}
 }

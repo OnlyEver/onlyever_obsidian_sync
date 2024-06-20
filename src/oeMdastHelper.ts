@@ -1,7 +1,7 @@
 import {Root, RootContent} from "mdast";
 import {
 	BlockQuoteBlock,
-	CodeBlock,
+	CodeBlock, EmptyBlock,
 	HeadingBlock,
 	ImageBlock,
 	ListBlock, MathBlock,
@@ -62,6 +62,15 @@ export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
 			return new TableBlock(block);
 		case "math":
 			return new MathBlock(block);
+		/**
+		 * Do not remove this line..
+		 * This line is in-fact reachable, even tho the IDE suggests its not.
+		 * This is because RootContent doesn't contain "empty_line" as a value for the type property.
+		 * But "empty_line" exists because we manually pushed empty_line block when revising the ree.
+		 */
+		//@ts-ignore
+		case "empty_line":
+			return new EmptyBlock();
 		default:
 			if (isImageElement(block)) {
 				return new ImageBlock(block)
@@ -71,15 +80,48 @@ export function parseMdastBlockToOeBlock(block: RootContent): OeBlock {
 	}
 }
 
-export function restructureInitialMdastTree(tree: Root) {
+export function restructureInitialMdastTree(tree: Root, numberOfSpacesMappedToEmptyLineNumber: { [key: number]: number }) {
 	const revisedTree = {'type': 'root', children: []} as Root;
+	let previousBlockEnd = 0;
+
+	let loopIteration = 0;
+	let currentItemStartLine = 0;
+
+	const emptyBlock  = {
+		type: 'empty_line',
+	}
+	const emptyParagraphBlock  = {
+		type: 'paragraph',
+		children: [{
+			type: "text",
+			value: ""
+		}]
+	}
+
+	const lineNumbersWithEmptyLines = Object.keys(numberOfSpacesMappedToEmptyLineNumber)
 
 	tree.children?.forEach((childBlock: RootContent) => {
-		if (childBlock.type === 'paragraph'
-			&& childBlock.children
-			&& childBlock.children.length > 1
-			&& containsMdastImageBlock(childBlock)
-		) {
+		if(loopIteration!==0){
+			currentItemStartLine = childBlock.position?.start.line ?? 0;
+			let lookBackLineNumber =  currentItemStartLine - 1;
+
+			while(lookBackLineNumber >= previousBlockEnd){
+
+				if(lineNumbersWithEmptyLines.contains(String(lookBackLineNumber))){
+					const numberOfSpaces = numberOfSpacesMappedToEmptyLineNumber[lookBackLineNumber];
+
+					if(numberOfSpaces > 0){
+						revisedTree.children.push(emptyParagraphBlock as RootContent)
+					}else{
+						revisedTree.children.push(emptyBlock as RootContent);
+					}
+				}
+
+				lookBackLineNumber = lookBackLineNumber - 1;
+			}
+		}
+
+		if (childBlock.type === 'paragraph' && childBlock.children && childBlock.children.length > 1 && containsMdastImageBlock(childBlock)) {
 			const fragmentedBlocks: Array<RootContent> = fragmentMdastParagraphBlock(childBlock);
 
 			fragmentedBlocks.forEach((innerChild: RootContent) => {
@@ -88,6 +130,9 @@ export function restructureInitialMdastTree(tree: Root) {
 		} else {
 			revisedTree.children?.push(childBlock);
 		}
+
+		previousBlockEnd = childBlock.position?.end.line ?? 0;
+		loopIteration++;
 	});
 
 	return revisedTree;

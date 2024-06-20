@@ -1,4 +1,4 @@
-import {RootContent} from "mdast";
+import {Root, RootContent} from "mdast";
 import {toMarkdown} from "mdast-util-to-markdown";
 import {mathToMarkdown} from "mdast-util-math";
 
@@ -154,5 +154,12 @@ export class MathBlock extends OeBlock {
 		this.block_type = "math";
 		// @ts-ignore
         this.content = block.value;
+	}
+}
+
+export class EmptyBlock extends OeBlock{
+	constructor() {
+		super();
+		this.block_type = "empty_line";
 	}
 }
