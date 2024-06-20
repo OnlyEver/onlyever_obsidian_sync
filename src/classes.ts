@@ -63,29 +63,39 @@ export class ListBlock extends OeBlock {
 
 		for (const line of lines) {
 			const match = line.match(/^(\s*)(\S*\s*)(.*)/);
+
 			if (match) {
 				const indentation = match[1].replace(/\t/g, '    ').length;
 				let indicator 	   = match[2];
 				let text 		   = match[3];
-				let type: 'ordered' | 'unordered' | 'checkbox';
+				let type: 'ordered' | 'unordered' | 'checkbox' | 'not-a-list-item';
 
 				if (indicator === line) {
 					type = 'unordered';
 					indicator = '-';
 					text = line;
-				} else if (text.startsWith('[ ]') || text.startsWith('[x]')) {
+				} else if (this.isCheckboxItem(text)) {
 					type = "checkbox";
 					indicator = text.startsWith('[x]') ? '[x]' : '[ ]';
 					text = text.replace(/\[ \]|\[x\]/, '');
-				} else {
-					if (indicator.startsWith('*') || indicator.startsWith('-')) {
-						type = 'unordered';
-					} else {
-						type = 'ordered';
-					}
+				} else if (this.isUnorderedItem(indicator)) {
+					type = 'unordered';
+				}else if (this.isOrderedItem(indicator)) {
+					type = "ordered";
+				}else{
+					type = 'not-a-list-item';
 				}
 
-				listItems.push(new ListItemBlock(text, type, indicator, indentation));
+				if(type === 'not-a-list-item'){
+					const  previousListItem  = listItems.pop();
+
+					if(previousListItem){
+						previousListItem.content = previousListItem.content + "\n" + line
+						listItems.push(previousListItem);
+					}
+				}else{
+					listItems.push(new ListItemBlock(text, type, indicator, indentation));
+				}
 			}
 		}
 
@@ -135,6 +145,18 @@ export class ListBlock extends OeBlock {
 
 		return this;
 	}
+
+	private isOrderedItem(indicator: string) {
+		return indicator.trim().endsWith('.') && !isNaN(Number(indicator.trim().slice(0, -1))) && indicator.trim().slice(0, -1) !== ''
+	}
+
+	private isUnorderedItem(indicator: string){
+		return indicator.startsWith('*') || indicator.startsWith('-')
+	}
+
+	private isCheckboxItem(text: string) {
+		return text.startsWith('[ ]') || text.startsWith('[x]')
+	}
 }
 
 
@@ -151,8 +173,8 @@ class ListItemBlock extends OeBlock {
 		this.content    = content
 		this.level 		= level
 		this.list_type 	= list_type
-		this.marker 	= marker
 		this.children 	= []
+		this.marker		= marker;
 	}
 }
 
