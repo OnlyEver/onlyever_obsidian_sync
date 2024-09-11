@@ -9,8 +9,8 @@ const DEFAULT_SETTINGS: OnlyEverSettings = {
 	tokenValidity: false,
 	syncInterval: null,
 	userId: null,
+	preferredFolder: null
 };
-
 
 export default class OnlyEverPlugin extends Plugin {
 	settings: OnlyEverSettings;
@@ -29,7 +29,7 @@ export default class OnlyEverPlugin extends Plugin {
 		this.registerAllEvents();
 
 		this.scheduledSync();
-		this.addSettingTab(new OnlyEverSettingsTab(this.app, this));
+		this.addSettingTab(await new OnlyEverSettingsTab(this.app, this));
 		this.previousTab = this.app.workspace.getActiveFile()
 	}
 
@@ -46,7 +46,7 @@ export default class OnlyEverPlugin extends Plugin {
 		this.scanVault();
 	}
 
-	getSettingsValue() {
+	getApiTokenFromSettings() {
 		return this.settings.apiToken;
 	}
 

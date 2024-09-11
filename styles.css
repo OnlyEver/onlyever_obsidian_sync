@@ -86,3 +86,35 @@ If your plugin does not need CSS, delete this file.
 .icon {
 	position: absolute;
 }
+
+
+.loader-container{
+	width: 100%;
+	display: flex;
+	justify-content: center;
+}
+
+.loader {
+	width: 45px;
+	aspect-ratio: .75;
+	--c: no-repeat linear-gradient(#fff 0 0);
+	background:
+		var(--c) 0%   50%,
+		var(--c) 50%  50%,
+		var(--c) 100% 50%;
+	animation: l7 1s infinite linear alternate;
+}
+@keyframes l7 {
+	0%  {background-size: 20% 50% ,20% 50% ,20% 50% }
+	20% {background-size: 20% 20% ,20% 50% ,20% 50% }
+	40% {background-size: 20% 100%,20% 20% ,20% 50% }
+	60% {background-size: 20% 50% ,20% 100%,20% 20% }
+	80% {background-size: 20% 50% ,20% 50% ,20% 100%}
+	100%{background-size: 20% 50% ,20% 50% ,20% 50% }
+}
+
+.disable{
+	cursor: not-allowed;
+	opacity: 0.5;
+	pointer-events: none;
+}

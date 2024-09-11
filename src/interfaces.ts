@@ -27,10 +27,11 @@ export interface ApiResponse {
 }
 
 export interface OnlyEverSettings {
-    apiToken: string;
-    tokenValidity: boolean | null;
-    syncInterval: any;
-    userId: string | null;
+	apiToken: string;
+	tokenValidity: boolean | null;
+	syncInterval: any;
+	userId: string | null;
+	preferredFolder: OeSimpleFolderType | null;
 }
 
 export interface ReplacementNote {
@@ -93,4 +94,15 @@ export interface  SyncImagesResponse extends  OeResponse{
 }
 export interface Siblings {
     [key: string]: Stat
+}
+
+export enum OE_ROUTES {
+	SYNC_NOTES = 'obsidianSyncNotes',
+	SYNC_IMAGES = 'obsidianSyncImages',
+	VERIFY_TOKEN = 'obsidianVerifyToken',
+	GET_USER_FOLDERS = 'obsidianGetUserFolders'
+}
+
+export interface OeSimpleFolderType{
+	[key: string]: string
 }

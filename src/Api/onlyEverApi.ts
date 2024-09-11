@@ -1,6 +1,6 @@
 import axios, {AxiosResponse} from "axios";
 import {OeToast} from "../OeToast";
-import {MarkdownAndImageInputPayloadMap, MarkdownAndRemoteUrlMap} from "../interfaces";
+import {MarkdownAndImageInputPayloadMap, MarkdownAndRemoteUrlMap, OE_ROUTES, OeSimpleFolderType} from "../interfaces";
 
 interface ApiData {
 	success: boolean;
@@ -24,7 +24,7 @@ class OnlyEverApi {
 	 */
 	async syncFiles(files: object[]) {
 		try {
-			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/notes?pluginName=obsidian&token=${this.apiToken}`;
+			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/${OE_ROUTES.SYNC_NOTES}?pluginName=obsidian&token=${this.apiToken}`;
 
 			if (files.length > 0) {
 				axios({
@@ -65,7 +65,7 @@ class OnlyEverApi {
 	 */
 	async validateApiToken(token: string): Promise<{ status: boolean, userId: null | string }> {
 		try {
-			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/verifyToken?pluginName=obsidian&token=${token}`;
+			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/${OE_ROUTES.VERIFY_TOKEN}?pluginName=obsidian&token=${token}`;
 			const response = await axios.post(endpoint);
 
 			if (response.status === 200 && response.data.success) {
@@ -95,7 +95,7 @@ class OnlyEverApi {
 	 */
 	async syncImages(data: object) {
 		try {
-			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
+			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/${OE_ROUTES.SYNC_IMAGES}?pluginName=obsidian&token=${this.apiToken}`;
 
 			const response =  await axios.post(endpoint, data)
 
@@ -119,7 +119,7 @@ class OnlyEverApi {
 
 	async syncAllImages(files: MarkdownAndImageInputPayloadMap): Promise<MarkdownAndRemoteUrlMap> {
 		try {
-			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/syncImages?pluginName=obsidian&token=${this.apiToken}`;
+			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/${OE_ROUTES.SYNC_IMAGES}?pluginName=obsidian&token=${this.apiToken}`;
 
 			const response: AxiosResponse =  await axios.post(endpoint, {files: files})
 
@@ -138,6 +138,24 @@ class OnlyEverApi {
 			new OeToast(message)
 			throw error;
 		}
+	}
+
+	/**
+	 * Fetches user folder names from atlas.
+	 *
+	 * @param token string
+	 *
+	 * @return Promise<string[]>
+	 */
+	async getUserFolders(token: string): Promise<OeSimpleFolderType[]> {
+		const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/${OE_ROUTES.GET_USER_FOLDERS}?pluginName=obsidian&token=${token}`;
+		const response = await axios.get(endpoint);
+
+		if (response.status === 200 && response.data.success) {
+			return response.data.data;
+		}
+
+		return [];
 	}
 }
 

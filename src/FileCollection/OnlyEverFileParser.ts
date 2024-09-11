@@ -165,6 +165,9 @@ export class OnlyEverFileParser {
 			}
 		}
 
+		console.log('setting.preferredFolder');
+		console.log(setting.preferredFolder);
+
 		return {
 			title: file.basename,
 			banner_image: finalBannerImage,
@@ -179,6 +182,7 @@ export class OnlyEverFileParser {
 				sub_category: 'obsidian',
 				extension: '.md'
 			},
+			folder: setting.preferredFolder,
 			fileCtime: file.stat.ctime,
 			fileMtime: file.stat.mtime,
             filePath: file.path,
