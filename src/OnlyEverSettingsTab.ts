@@ -1,5 +1,5 @@
 import {
-	App, debounce, DropdownComponent,
+	App, debounce, Debouncer, DropdownComponent,
 	ExtraButtonComponent,
 	PluginSettingTab,
 	Setting,
@@ -7,31 +7,44 @@ import {
 } from "obsidian";
 import {OnlyEverApi} from "./Api/onlyEverApi";
 import OnlyEverPlugin from "../main";
-import {container} from "webpack";
 import {OeSimpleFolderType} from "./interfaces";
 
 export class OnlyEverSettingsTab extends PluginSettingTab {
 	plugin: OnlyEverPlugin;
 	onlyEverApi: OnlyEverApi;
-	onlyEverPermanent: OnlyEverApi;
+	private validityElement: ExtraButtonComponent;
+	private userFolders: OeSimpleFolderType[] = [{'library': 'Library'}];
+	private dropdown: DropdownComponent;
+	private preferredFolder: null | OeSimpleFolderType;
+	private tokenErrorDiv: HTMLDivElement;
+	private folderErrorDiv: HTMLDivElement;
 
 	constructor(app: App, plugin: OnlyEverPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 		this.onlyEverApi = new OnlyEverApi(this.plugin.settings.apiToken);
+		this.preferredFolder = this.plugin.settings.preferredFolder;
+
+		this.watchApiToken();
+		this.watchTokenValidity();
+
+		if (this.plugin.settings.apiToken && this.plugin.settings.tokenValidity) {
+			this.onlyEverApi.getUserFolders(this.plugin.settings.apiToken).then((userFolders) => {
+				this.userFolders = userFolders;
+			})
+		} else if (this.preferredFolder) {
+			this.userFolders = [this.preferredFolder]
+		}
 	}
 
+	/**
+	 * This method does not need to be explicitly called. It'll be auto invoked when opening the OE Settings tab.
+	 */
 	async display(): Promise<void> {
 		const {containerEl} = this;
 
 		containerEl.empty();
-		containerEl.createEl("h2", {
-			text: "Settings for Obsidian-Onlyever-Plugin.",
-		});
-
-		let textElement: TextComponent;
-		let validityElement: ExtraButtonComponent;
-		let userFolders: OeSimpleFolderType[] = [];
+		containerEl.createEl("h2", {text: "Settings for Obsidian-Onlyever-Plugin."});
 
 		const debouncedTokenVerification = debounce((value: string) => {
 			this.onlyEverApi.validateApiToken(value).then(async (result) => {
@@ -39,130 +52,141 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 				this.plugin.settings.userId = null
 
 				if (result.status) {
-					validityElement.setIcon("checkIcon");
+					this.updateFolderSectionState();
+					this.validityElement.setIcon("checkIcon");
 
-					tokenErrorDiv.innerText = "";
-					folderErrorDiv.innerText = "";
+					this.tokenErrorDiv.innerText = "";
+					this.folderErrorDiv.innerText = "";
 
 					this.plugin.settings.tokenValidity = result.status
 					this.plugin.settings.userId = result.userId
-
-					document.querySelector('.folder-selection')?.classList.remove('disable')
+					this.folderSectionEnable()
 				} else if (!result["status"]) {
-					validityElement.setIcon("crossIcon");
+					this.validityElement.setIcon("crossIcon");
 
-					tokenErrorDiv.addClass("error");
-					tokenErrorDiv.innerText = value.length > 0 ? "The PLUGIN TOKEN is incorrect." : "";
+					this.tokenErrorDiv.addClass("error");
+					this.tokenErrorDiv.innerText = value.length > 0 ? "The PLUGIN TOKEN is incorrect." : "";
 
-					folderErrorDiv.addClass("error");
-					folderErrorDiv.innerText = value.length > 0 ? "Enter valid PLUGIN TOKEN to use this feature." : "";
+					this.folderErrorDiv.addClass("error");
+					this.folderErrorDiv.innerText = value.length >= 0 ? "Enter valid PLUGIN TOKEN to use this feature." : "";
 
-					document.querySelector('.folder-selection')?.classList.add('disable')
+					this.folderSectionDisable()
 				}
 
 				await this.plugin.saveSettings()
 			})
 		}, 150, true)
 
-		this.showLoader(containerEl);
+		this.renderTokenSettingSection(containerEl, debouncedTokenVerification);
+		this.renderFolderSettingSection(containerEl);
+		this.updateFolderSectionState();
+	}
 
-		if(this.plugin.settings.tokenValidity){
-			userFolders = await this.onlyEverApi.getUserFolders(this.onlyEverApi.apiToken);
-		}
+	private renderTokenSettingSection(containerEl: HTMLElement, debouncedTokenVerification: Debouncer<[value: string], void>) {
+		let textElement: TextComponent;
 
-		this.hideLoader(containerEl);
-
-		/** Token field section */
 		new Setting(containerEl)
 			.setClass("plugin-input")
 			.setName("PLUGIN TOKEN")
 			.setDesc("Enter Plugin Token here")
 			.addText((text) => {
-				textElement = text as TextComponent;
+				textElement = text;
+
 				text.setPlaceholder("Plugin Token")
 					.setValue(this.plugin.settings.apiToken)
 					.onChange(async (value) => {
 						this.plugin.settings.apiToken = value;
 						this.plugin.settings.tokenValidity = null;
 
-						if (value.length && value != "") {
-							debouncedTokenVerification(value)
-						}
-
-						if (!text.getValue().length || text.getValue() === null) {
-							tokenErrorDiv.innerText = "";
-							validityElement.setIcon("circle-slash");
-						}
-
+						value ? debouncedTokenVerification(value) : this.validityElement.setIcon("circle-slash");
 						await this.plugin.saveSettings();
 					});
 			})
 			.addExtraButton((extra) => {
-				validityElement = extra as ExtraButtonComponent;
-				validityElement.setIcon("circle-slash").extraSettingsEl;
+				this.validityElement = extra.setIcon("circle-slash");
 
 				if (this.plugin.settings.tokenValidity) {
 					extra.setIcon("checkIcon");
-				} else if (
-					this.plugin.settings.tokenValidity === false &&
-					this.plugin.settings.apiToken.length > 0
-				) {
+				} else if (this.plugin.settings.tokenValidity === false && this.plugin.settings.apiToken) {
 					extra.setIcon("crossIcon");
 				}
 			})
 			.addToggle((toggle) => {
 				textElement.inputEl.setAttribute("type", "password");
-
-				toggle.setValue(false).onChange(async (value) => {
-					if (value) {
-						textElement.inputEl.setAttribute("type", "text");
-					} else {
-						textElement.inputEl.setAttribute("type", "password");
-					}
+				toggle.setValue(false).onChange((value) => {
+					textElement.inputEl.setAttribute("type", value ? "text" : "password");
 				});
 			});
 
-		const tokenErrorDiv = containerEl.createEl("div");
+		containerEl.createEl("div", {cls: "token-error"});
 
-		/** Folder dropdown section */
+		this.tokenErrorDiv = containerEl.createEl('div');
+	}
+
+	private renderFolderSettingSection(containerEl: HTMLElement) {
 		new Setting(containerEl)
 			.setClass("folder-selection")
 			.setName('PREFERRED FOLDER')
 			.setDesc('Select the folder you want to sync your notes to')
 			.addDropdown(async (dropdown) => {
-				const populateDropdown = async () => {
-					let defaultFolderId: string | null = null;
+				this.dropdown = dropdown;
 
-					userFolders.forEach((folder: OeSimpleFolderType) => {
-						const folderId = Object.keys(folder)[0];
-						const folderName = folder[folderId];
+				await this.populateDropdown();
 
-						if (folderName === 'Library') {
-							defaultFolderId = folderId;
-						}
-
-						dropdown.addOption(folderId, folderName);
-					});
-
-					const preferredFolder = (await this.plugin.loadData()).preferredFolder;
-					const preferredFolderId = preferredFolder ? Object.keys(preferredFolder)[0] : null;
-
-					dropdown.setValue(preferredFolderId || defaultFolderId || '');
-				};
-
-				await populateDropdown();
-
-				dropdown.onChange(async (selectedFolderId) => {
-					const selectedFolder = userFolders.find(folder => Object.keys(folder)[0] === selectedFolderId);
+				this.dropdown.onChange(async (selectedFolderId) => {
+					const selectedFolder = this.userFolders.find(folder => this.getKeyFromOeSimpleFolder(folder) === selectedFolderId);
 
 					if (selectedFolder) {
 						this.plugin.settings.preferredFolder = selectedFolder;
+						this.preferredFolder = selectedFolder;
 						await this.plugin.saveSettings();
 					}
 				});
+			})
+			.addExtraButton((button) => {
+				button.setIcon('refresh-cw').setTooltip('Refresh Folders').onClick(async () => {
+					this.userFolders = await this.onlyEverApi.getUserFolders(this.plugin.settings.apiToken)
+
+					await this.populateDropdown();
+				});
 			});
 
-		const folderErrorDiv = containerEl.createEl("div");
+		this.folderErrorDiv = containerEl.createEl('div');
+	}
+
+	async populateDropdown() {
+		let userLibraryId: false | string = false;
+		const optionsLength = this.dropdown.selectEl.length;
+
+		/**
+		 * This will remove all options from the dropdown
+		 * I'm doing this since there's no native API to remove options from dropdown
+		 */
+		for (let i = 0; i < optionsLength; i++) {
+			this.dropdown.selectEl.options.remove(0);
+		}
+
+		this.userFolders.forEach((folder: OeSimpleFolderType) => {
+			const folderId = this.getKeyFromOeSimpleFolder(folder);
+			const folderName = folder[folderId];
+
+			if (folderName === 'Library') {
+				userLibraryId = folderId;
+			}
+
+			this.dropdown.addOption(folderId, folderName);
+		});
+
+		/**
+		 * I'm doing this to handle a case when we have to select a dropdown option.
+		 * Given that we have 2 options for library (one dummy 'Library' and another is actual user 'Library')
+		 * So basically I'm selecting the option by precedence of: preferred folder -> user library -> dummy library, so that 1 option is shown to be selected in the dropdown
+		 */
+		const setThisId = this.preferredFolder
+			? this.getKeyFromOeSimpleFolder(this.preferredFolder)
+			: (userLibraryId ? userLibraryId : 'library');
+
+		this.dropdown.setValue(setThisId);
 	}
 
 	private showLoader(containerEl: HTMLElement): void {
@@ -185,6 +209,54 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 		const loaderParent = containerEl.querySelector(".loader-parent");
 		if (loaderParent) {
 			loaderParent.remove();
+		}
+	}
+
+	private folderSectionDisable() {
+		document.querySelector('.folder-selection')?.classList.add('disable')
+
+	}
+
+	private folderSectionEnable() {
+		document.querySelector('.folder-selection')?.classList.remove('disable')
+	}
+
+	private getKeyFromOeSimpleFolder(oeSimpleFolder: OeSimpleFolderType) {
+		return Object.keys(oeSimpleFolder)[0];
+	}
+
+	private watchApiToken() {
+		let currentToken = this.plugin.settings.apiToken;
+		Object.defineProperty(this.plugin.settings, 'apiToken', {
+			get: () => currentToken,
+			set: (value) => {
+				currentToken = value;
+				this.updateFolderSectionState();
+			}
+		});
+	}
+
+	private watchTokenValidity() {
+		let currentValidity = this.plugin.settings.tokenValidity;
+		Object.defineProperty(this.plugin.settings, 'tokenValidity', {
+			get: () => currentValidity,
+			set: (value) => {
+				currentValidity = value;
+				this.updateFolderSectionState();
+			}
+		});
+	}
+
+	/** This method checks the state of apiToken and tokenValidity */
+	private updateFolderSectionState() {
+		const {apiToken, tokenValidity} = this.plugin.settings;
+		if (apiToken && tokenValidity) {
+			this.onlyEverApi.getUserFolders(this.plugin.settings.apiToken).then((userFolders) => {
+				this.userFolders = userFolders;
+				this.populateDropdown().then(() => this.folderSectionEnable())
+			})
+		} else {
+			this.folderSectionDisable();
 		}
 	}
 }
