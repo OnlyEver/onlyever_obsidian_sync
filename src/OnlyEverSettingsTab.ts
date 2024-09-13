@@ -182,9 +182,13 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 		 * Given that we have 2 options for library (one dummy 'Library' and another is actual user 'Library')
 		 * So basically I'm selecting the option by precedence of: preferred folder -> user library -> dummy library, so that 1 option is shown to be selected in the dropdown
 		 */
-		const setThisId = this.preferredFolder
-			? this.getKeyFromOeSimpleFolder(this.preferredFolder)
-			: (userLibraryId ? userLibraryId : 'library');
+		let setThisId  = 'library';
+
+		if(this.preferredFolder && this.userFolders.includes(this.preferredFolder)){
+			setThisId = this.getKeyFromOeSimpleFolder(this.preferredFolder);
+		}else if(userLibraryId){
+			setThisId = userLibraryId
+		}
 
 		this.dropdown.setValue(setThisId);
 	}
