@@ -1,7 +1,7 @@
 {
 	"id": "the-only-ever-plugin-dev",
 	"name": "Only Ever",
-	"version": "1.4.3-dev",
+	"version": "1.4.4-dev",
 	"minAppVersion": "0.15.0",
 	"description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
 	"author": "Obsidian",

@@ -3,11 +3,12 @@ import {
 	ExtraButtonComponent,
 	PluginSettingTab,
 	Setting,
-	TextComponent,
+	TextComponent, TFolder,
 } from "obsidian";
 import {OnlyEverApi} from "./Api/onlyEverApi";
 import OnlyEverPlugin from "../main";
 import {OeSimpleFolderType} from "./interfaces";
+import {Arr} from "tern";
 
 export class OnlyEverSettingsTab extends PluginSettingTab {
 	plugin: OnlyEverPlugin;
@@ -180,11 +181,15 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 		/**
 		 * I'm doing this to handle a case when we have to select a dropdown option.
 		 * Given that we have 2 options for library (one dummy 'Library' and another is actual user 'Library')
-		 * So basically I'm selecting the option by precedence of: preferred folder -> user library -> dummy library, so that 1 option is shown to be selected in the dropdown
+		 * So basically I'm selecting the option by precedence of:
+		 * 	1. preferred folder (already selected folder)
+		 *  2. user's library folder
+		 *  3. dummy/default library folder.
+		 *  With this we can ensure that one valid folder is selected when opening the settings tab.
 		 */
 		let setThisId  = 'library';
 
-		if(this.preferredFolder && this.userFolders.includes(this.preferredFolder)){
+		if(this.preferredFolder && this.preferredFolderExistsInUserFolder(this.preferredFolder, this.userFolders)){
 			setThisId = this.getKeyFromOeSimpleFolder(this.preferredFolder);
 		}else if(userLibraryId){
 			setThisId = userLibraryId
@@ -251,7 +256,11 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	/** This method checks the state of apiToken and tokenValidity */
+	/**
+	 *  This method checks the state of apiToken and tokenValidity
+	 *  - If both are okay, enables the folder selection section.
+	 *  - Else disables the folder selection section
+	 */
 	private updateFolderSectionState() {
 		const {apiToken, tokenValidity} = this.plugin.settings;
 		if (apiToken && tokenValidity) {
@@ -262,5 +271,18 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 		} else {
 			this.folderSectionDisable();
 		}
+	}
+
+	/**
+	 * Basically checks if preferred folder exists in user-folders
+	 * .
+	 * @param preferredFolder
+	 * @param userFolders
+	 * @private
+	 */
+	private preferredFolderExistsInUserFolder(preferredFolder: OeSimpleFolderType, userFolders: Array<OeSimpleFolderType>): boolean {
+		return userFolders.some(folder =>
+			Object.entries(preferredFolder).every(([key, value]) => folder[key] === value)
+		);
 	}
 }

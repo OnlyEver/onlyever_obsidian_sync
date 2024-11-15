@@ -165,9 +165,6 @@ export class OnlyEverFileParser {
 			}
 		}
 
-		console.log('setting.preferredFolder');
-		console.log(setting.preferredFolder);
-
 		return {
 			title: file.basename,
 			banner_image: finalBannerImage,
