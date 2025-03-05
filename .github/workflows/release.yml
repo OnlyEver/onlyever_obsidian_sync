@@ -22,11 +22,10 @@ jobs:
             AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
             S3_BUCKET: ${{secrets.S3_BUCKET}}
             S3_REGION: ${{secrets.S3_REGION}}
-        
+
         strategy:
             matrix:
                 node-version: [17.x]
-
 
         steps:
             - name: Checkout codes
