@@ -4,6 +4,7 @@ import {
 	PluginSettingTab,
 	Setting,
 	TextComponent, TFolder,
+	ToggleComponent,
 } from "obsidian";
 import { OnlyEverApi } from "./Api/onlyEverApi";
 import OnlyEverPlugin from "../main";
@@ -86,24 +87,30 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 	private renderTokenSettingSection(containerEl: HTMLElement, debouncedTokenVerification: Debouncer<[value: string], void>) {
 		let textElement: TextComponent;
 
-		new Setting(containerEl)
+		const setting = new Setting(containerEl)
 			.setClass("plugin-input")
-			.setName("PLUGIN TOKEN")
-			.setDesc("Enter plugin token")
-			.addText((text) => {
-				textElement = text;
+			.setName("API key")
+			.setDesc("");
 
-				text.setPlaceholder("Plugin Token")
-					.setValue(this.plugin.settings.apiToken)
-					.onChange(async (value) => {
-						this.plugin.settings.apiToken = value;
-						this.plugin.settings.tokenValidity = null;
+		const descEl = setting.descEl;
+		descEl.createEl("span", { text: "Log in to your " });
+		descEl.createEl("a", { text: "Only Ever account", href: "https://account.theonlyever.com/" });
+		descEl.createEl("span", { text: " to generate an API key" });
 
-						value ? debouncedTokenVerification(value) : this.validityElement.setIcon("circle-slash");
-						await this.plugin.saveSettings();
-					});
-			})
-			.addExtraButton((extra) => {
+		setting.addText((text: TextComponent) => {
+			textElement = text;
+
+			text.setPlaceholder("Plugin Token")
+				.setValue(this.plugin.settings.apiToken)
+				.onChange(async (value: string) => {
+					this.plugin.settings.apiToken = value;
+					this.plugin.settings.tokenValidity = null;
+
+					value ? debouncedTokenVerification(value) : this.validityElement.setIcon("circle-slash");
+					await this.plugin.saveSettings();
+				});
+		})
+			.addExtraButton((extra: ExtraButtonComponent) => {
 				this.validityElement = extra.setIcon("circle-slash");
 
 				if (this.plugin.settings.tokenValidity) {
@@ -112,9 +119,9 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 					extra.setIcon("crossIcon");
 				}
 			})
-			.addToggle((toggle) => {
+			.addToggle((toggle: ToggleComponent) => {
 				textElement.inputEl.setAttribute("type", "password");
-				toggle.setValue(false).onChange((value) => {
+				toggle.setValue(false).onChange((value: boolean) => {
 					textElement.inputEl.setAttribute("type", value ? "text" : "password");
 				});
 			});
