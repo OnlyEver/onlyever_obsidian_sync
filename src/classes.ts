@@ -1,7 +1,7 @@
-import {RootContent} from "mdast";
-import {toMarkdown} from "mdast-util-to-markdown";
-import {mathToMarkdown} from "mdast-util-math";
-import {removeNewLine} from "./oeMdastHelper";
+import { RootContent } from "mdast";
+import { toMarkdown } from "mdast-util-to-markdown";
+import { mathToMarkdown } from "mdast-util-math";
+import { removeNewLine } from "./oeMdastHelper";
 
 export class OeBlock {
 	block_type: string;
@@ -16,12 +16,12 @@ export class HeadingBlock extends OeBlock {
 	constructor(block: RootContent) {
 		super();
 
-		block.type 		= "paragraph";
-		this.content 	= removeNewLine(toMarkdown(block, {extensions: [mathToMarkdown()]}))
+		block.type = "paragraph";
+		this.content = removeNewLine(toMarkdown(block, { extensions: [mathToMarkdown()] }))
 		this.block_type = "heading";
 		// @ts-ignore
-        this.heading_level = block.depth;
-		this.children 	   = [];
+		this.heading_level = block.depth;
+		this.children = [];
 	}
 }
 
@@ -33,11 +33,11 @@ export class ParagraphBlock extends OeBlock {
 		this.block_type = "paragraph";
 
 		// @ts-ignore
-		if(block && block?.block_type === 'paragraph'){
+		if (block && block?.block_type === 'paragraph') {
 			// @ts-ignore
 			this.content = block.content;
-		}else{
-			this.content = removeNewLine(toMarkdown(block, {extensions: [mathToMarkdown()]}))
+		} else {
+			this.content = removeNewLine(toMarkdown(block, { extensions: [mathToMarkdown()] }))
 		}
 	}
 
@@ -52,7 +52,7 @@ export class ListBlock extends OeBlock {
 
 		if (blockFragmentFromRawLines.length > 0) {
 			const allListItemsNotNestedNoChildren = this.flattenAndParseListItems(blockFragmentFromRawLines);
-			this.content 										 = this.buildNestedStructure(allListItemsNotNestedNoChildren);
+			this.content = this.buildNestedStructure(allListItemsNotNestedNoChildren);
 		} else {
 			this.content = [];
 		}
@@ -66,8 +66,8 @@ export class ListBlock extends OeBlock {
 
 			if (match) {
 				const indentation = match[1].replace(/\t/g, '    ').length;
-				let indicator 	   = match[2];
-				let text 		   = match[3];
+				let indicator = match[2];
+				let text = match[3];
 				let type: 'ordered' | 'unordered' | 'checkbox' | 'not-a-list-item';
 
 				if (indicator === line) {
@@ -80,20 +80,20 @@ export class ListBlock extends OeBlock {
 					text = text.replace(/\[ \]|\[x\]/, '');
 				} else if (this.isUnorderedItem(indicator)) {
 					type = 'unordered';
-				}else if (this.isOrderedItem(indicator)) {
+				} else if (this.isOrderedItem(indicator)) {
 					type = "ordered";
-				}else{
+				} else {
 					type = 'not-a-list-item';
 				}
 
-				if(type === 'not-a-list-item'){
-					const  previousListItem  = listItems.pop();
+				if (type === 'not-a-list-item') {
+					const previousListItem = listItems.pop();
 
-					if(previousListItem){
+					if (previousListItem) {
 						previousListItem.content = previousListItem.content + "\n" + line
 						listItems.push(previousListItem);
 					}
-				}else{
+				} else {
 					listItems.push(new ListItemBlock(text, type, indicator, indentation));
 				}
 			}
@@ -150,7 +150,7 @@ export class ListBlock extends OeBlock {
 		return indicator.trim().endsWith('.') && !isNaN(Number(indicator.trim().slice(0, -1))) && indicator.trim().slice(0, -1) !== ''
 	}
 
-	private isUnorderedItem(indicator: string){
+	private isUnorderedItem(indicator: string) {
 		return indicator.startsWith('*') || indicator.startsWith('-')
 	}
 
@@ -161,20 +161,20 @@ export class ListBlock extends OeBlock {
 
 
 class ListItemBlock extends OeBlock {
-	content: 	string
-	level:   	number
-	list_type: 	string
-	marker:  	string
-	children: 	OeBlock[]
+	content: string
+	level: number
+	list_type: string
+	marker: string
+	children: OeBlock[]
 
 	constructor(content: string, list_type: string, marker: string, level: number) {
 		super();
 		this.block_type = 'list_item'
-		this.content    = content
-		this.level 		= level
-		this.list_type 	= list_type
-		this.children 	= []
-		this.marker		= marker;
+		this.content = content
+		this.level = level
+		this.list_type = list_type
+		this.children = []
+		this.marker = marker;
 	}
 }
 
@@ -185,11 +185,11 @@ export class ImageBlock extends OeBlock {
 	constructor(block: RootContent) {
 		super();
 
-		this.block_type  = "image";
+		this.block_type = "image";
 		// @ts-ignore
-        this.img_src     = block.children[0].url
+		this.img_src = block.children[0].url
 		// @ts-ignore
-        this.img_caption = block.children[0].alt
+		this.img_caption = block.children[0].alt
 	}
 
 }
@@ -201,10 +201,10 @@ export class TableBlock extends OeBlock {
 		super();
 
 		this.block_type = "table";
-		this.rows 	    = [];
+		this.rows = [];
 
 		// @ts-ignore
-        block.children.forEach((innerBlock: RootContent, index: number) =>{
+		block.children.forEach((innerBlock: RootContent, index: number) => {
 			this.rows.push(new RowBlock(innerBlock, index))
 		})
 	}
@@ -218,27 +218,30 @@ export class RowBlock extends OeBlock {
 		super();
 
 		this.block_type = "row";
-		this.values     = [];
+		this.values = [];
 		this.is_heading = rowIndex === 0;
 
 		// @ts-ignore
-        block.children.forEach((innerBlock: RootContent)=>{
+		block.children.forEach((innerBlock: RootContent) => {
 			innerBlock.type = "paragraph";
 
-			this.values.push(removeNewLine(toMarkdown(innerBlock, {extensions: [mathToMarkdown()]})))
+			this.values.push(removeNewLine(toMarkdown(innerBlock, { extensions: [mathToMarkdown()] })))
 		})
 	}
 }
 
 export class CodeBlock extends OeBlock {
 	content: string;
+	lang: string;
 
 	constructor(block: RootContent) {
 		super();
 
 		this.block_type = "code";
 		// @ts-ignore
-        this.content 	= block.value;
+		this.content = block.value;
+		// @ts-ignore
+		this.lang = block.lang;
 	}
 }
 
@@ -249,8 +252,8 @@ export class BlockQuoteBlock extends OeBlock {
 		super();
 
 		this.block_type = "block_quote";
-		block.type   	= "paragraph";
-		this.content 	= removeNewLine(toMarkdown(block, {extensions: [mathToMarkdown()]}));
+		block.type = "paragraph";
+		this.content = removeNewLine(toMarkdown(block, { extensions: [mathToMarkdown()] }));
 	}
 }
 
@@ -264,11 +267,11 @@ export class MathBlock extends OeBlock {
 
 		this.block_type = "math";
 		// @ts-ignore
-        this.content 	= block.value;
+		this.content = block.value;
 	}
 }
 
-export class EmptyBlock extends OeBlock{
+export class EmptyBlock extends OeBlock {
 	constructor() {
 		super();
 		this.block_type = "empty_line";

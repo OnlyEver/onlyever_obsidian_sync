@@ -66,7 +66,7 @@ class OnlyEverApi {
 	async validateApiToken(token: string): Promise<{ status: boolean, userId: null | string }> {
 		try {
 			const endpoint = `https://us-east-1.aws.data.mongodb-api.com/app/oe-phase1-tkmsy/endpoint/${OE_ROUTES.VERIFY_TOKEN}?pluginName=obsidian&token=${token}`;
-			const response = await axios.post(endpoint);
+			const response = await axios.get(endpoint);
 
 			if (response.status === 200 && response.data.success) {
 				return {status: true, userId: response.data.userId}

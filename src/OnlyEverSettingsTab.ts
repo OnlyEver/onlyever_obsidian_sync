@@ -5,16 +5,16 @@ import {
 	Setting,
 	TextComponent, TFolder,
 } from "obsidian";
-import {OnlyEverApi} from "./Api/onlyEverApi";
+import { OnlyEverApi } from "./Api/onlyEverApi";
 import OnlyEverPlugin from "../main";
-import {OeSimpleFolderType} from "./interfaces";
-import {Arr} from "tern";
+import { OeSimpleFolderType } from "./interfaces";
+import { Arr } from "tern";
 
 export class OnlyEverSettingsTab extends PluginSettingTab {
 	plugin: OnlyEverPlugin;
 	onlyEverApi: OnlyEverApi;
 	private validityElement: ExtraButtonComponent;
-	private userFolders: OeSimpleFolderType[] = [{'library': 'Library'}];
+	private userFolders: OeSimpleFolderType[] = [{ 'library': 'Library' }];
 	private dropdown: DropdownComponent;
 	private preferredFolder: null | OeSimpleFolderType;
 	private tokenErrorDiv: HTMLDivElement;
@@ -42,10 +42,10 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 	 * This method does not need to be explicitly called. It'll be auto invoked when opening the OE Settings tab.
 	 */
 	async display(): Promise<void> {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
-		containerEl.createEl("h2", {text: "Settings for Obsidian-Onlyever-Plugin."});
+		containerEl.createEl("h2", { text: "Settings for Obsidian-Onlyever-Plugin." });
 
 		const debouncedTokenVerification = debounce((value: string) => {
 			this.onlyEverApi.validateApiToken(value).then(async (result) => {
@@ -89,7 +89,7 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setClass("plugin-input")
 			.setName("PLUGIN TOKEN")
-			.setDesc("Enter Plugin Token here")
+			.setDesc("Enter plugin token")
 			.addText((text) => {
 				textElement = text;
 
@@ -119,7 +119,7 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 				});
 			});
 
-		containerEl.createEl("div", {cls: "token-error"});
+		containerEl.createEl("div", { cls: "token-error" });
 
 		this.tokenErrorDiv = containerEl.createEl('div');
 	}
@@ -187,11 +187,11 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 		 *  3. dummy/default library folder.
 		 *  With this we can ensure that one valid folder is selected when opening the settings tab.
 		 */
-		let setThisId  = 'library';
+		let setThisId = 'library';
 
-		if(this.preferredFolder && this.preferredFolderExistsInUserFolder(this.preferredFolder, this.userFolders)){
+		if (this.preferredFolder && this.preferredFolderExistsInUserFolder(this.preferredFolder, this.userFolders)) {
 			setThisId = this.getKeyFromOeSimpleFolder(this.preferredFolder);
-		}else if(userLibraryId){
+		} else if (userLibraryId) {
 			setThisId = userLibraryId
 		}
 
@@ -199,9 +199,9 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 	}
 
 	private showLoader(containerEl: HTMLElement): void {
-		const loaderParent = containerEl.createEl("div", {cls: 'loader-parent'});
-		const loaderBarWrapper = containerEl.createEl("div", {cls: "loader-container"});
-		const loaderBar = containerEl.createEl("div", {cls: "loader"});
+		const loaderParent = containerEl.createEl("div", { cls: 'loader-parent' });
+		const loaderBarWrapper = containerEl.createEl("div", { cls: "loader-container" });
+		const loaderBar = containerEl.createEl("div", { cls: "loader" });
 		loaderBarWrapper.appendChild(loaderBar);
 
 		const loaderText = containerEl.createEl("div", {
@@ -262,7 +262,7 @@ export class OnlyEverSettingsTab extends PluginSettingTab {
 	 *  - Else disables the folder selection section
 	 */
 	private updateFolderSectionState() {
-		const {apiToken, tokenValidity} = this.plugin.settings;
+		const { apiToken, tokenValidity } = this.plugin.settings;
 		if (apiToken && tokenValidity) {
 			this.onlyEverApi.getUserFolders(this.plugin.settings.apiToken).then((userFolders) => {
 				this.userFolders = userFolders;
