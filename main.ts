@@ -20,7 +20,6 @@ export default class OnlyEverPlugin extends Plugin {
 	wasEdited: any = {}
 
 	async onload() {
-		console.log("OnlyEverPlugin loaded");
 		this.loadIcons();
 		await this.loadSettings();
 
