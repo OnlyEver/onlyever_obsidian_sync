@@ -38,6 +38,11 @@ export class ParagraphBlock extends OeBlock {
 			this.content = block.content;
 		} else {
 			this.content = removeNewLine(toMarkdown(block, { extensions: [mathToMarkdown()] }))
+
+			console.log('content', this.content);
+			//remove \[\[ from content for internal links
+			this.content = this.content.replace(/\\(?=\[)/g, '');
+			console.log('content-after', this.content);
 		}
 	}
 
